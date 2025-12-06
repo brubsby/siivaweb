@@ -903,7 +903,7 @@
 
         // --- Controls Events ---
         
-        async function handleAddNode(inputValue, isExplicitCategory) {
+        async function handleAddNode(inputValue, isExplicitCategory, event) {
             let val = inputValue.trim();
             if(!val) return;
 
@@ -911,6 +911,38 @@
             if (isExplicitCategory && !val.startsWith("Category:")) {
                 val = "Category:" + val;
             }
+
+            // Visual Start
+            let startX = window.innerWidth / 2;
+            let startY = window.innerHeight / 2;
+            
+            if (event) {
+                if (event.clientX) {
+                    startX = event.clientX;
+                    startY = event.clientY;
+                } else if (event.target && event.target.getBoundingClientRect) {
+                    const rect = event.target.getBoundingClientRect();
+                    startX = rect.left + rect.width / 2;
+                    startY = rect.top + rect.height / 2;
+                }
+            }
+            
+            const tempId = "Loading... " + Date.now();
+            
+            // Calculate velocity vector towards center
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            let dx = centerX - startX;
+            let dy = centerY - startY;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+            const speed = 15; // Initial burst speed
+            
+            const placeholderNode = addNode(tempId, isExplicitCategory ? 'category' : 'rip', startX, startY);
+            placeholderNode.vx = (dx / dist) * speed;
+            placeholderNode.vy = (dy / dist) * speed;
+            placeholderNode.vibrationStart = Date.now(); // Start vibrating
+            
+            restartSimulation();
 
             try {
                 // Check namespace via API
@@ -921,52 +953,69 @@
                     redirects: 1
                 }, globalAbortController.signal);
                 
+                let finalTitle = val;
+                let finalType = isExplicitCategory ? 'category' : 'rip';
+
                 if (data.query && data.query.pages) {
                     const pages = data.query.pages;
                     const pageId = Object.keys(pages)[0];
                     if (pageId !== "-1") {
                         const page = pages[pageId];
-                        val = page.title;
+                        finalTitle = page.title;
                         const ns = page.ns;
-                        const type = ns === 14 ? 'category' : 'rip';
-                        
-                        const node = addNode(val, type, window.innerWidth/2, window.innerHeight/2);
-                        restartSimulation();
-                        expandNode(node);
-                        return;
+                        finalType = ns === 14 ? 'category' : 'rip';
                     }
                 }
                 
-                // Fallback
-                const type = val.startsWith("Category:") ? 'category' : 'rip';
-                const node = addNode(val, type, window.innerWidth/2, window.innerHeight/2);
+                // Update Node
+                let finalNode = nodes.find(n => n.id === finalTitle);
+                
+                if (finalNode) {
+                    // Node already exists, remove placeholder
+                    nodes = nodes.filter(n => n.id !== tempId);
+                } else {
+                    // Rename placeholder
+                    placeholderNode.id = finalTitle;
+                    placeholderNode.type = finalType;
+                    finalNode = placeholderNode;
+                }
+                
                 restartSimulation();
-                expandNode(node);
+                expandNode(finalNode);
 
             } catch (e) {
-                if (e.name === 'AbortError') return;
+                if (e.name === 'AbortError') {
+                    nodes = nodes.filter(n => n.id !== tempId);
+                    restartSimulation();
+                    return;
+                }
                 console.error("Error checking page type:", e);
-                const type = val.startsWith("Category:") ? 'category' : 'rip';
-                const node = addNode(val, type, window.innerWidth/2, window.innerHeight/2);
+                let finalNode = nodes.find(n => n.id === val);
+                if (!finalNode) {
+                    placeholderNode.id = val;
+                    finalNode = placeholderNode;
+                } else {
+                    nodes = nodes.filter(n => n.id !== tempId);
+                }
                 restartSimulation();
-                expandNode(node);
+                expandNode(finalNode);
             }
         }
 
-        document.getElementById('addPageBtn').addEventListener('click', () => {
-            handleAddNode(document.getElementById('pageInput').value, false);
+        document.getElementById('addPageBtn').addEventListener('click', (e) => {
+            handleAddNode(document.getElementById('pageInput').value, false, e);
         });
         
-        document.getElementById('addCatBtn').addEventListener('click', () => {
-            handleAddNode(document.getElementById('catInput').value, true);
+        document.getElementById('addCatBtn').addEventListener('click', (e) => {
+            handleAddNode(document.getElementById('catInput').value, true, e);
         });
 
         // Enter key support
         document.getElementById('pageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleAddNode(e.target.value, false);
+            if (e.key === 'Enter') handleAddNode(e.target.value, false, e);
         });
         document.getElementById('catInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleAddNode(e.target.value, true);
+            if (e.key === 'Enter') handleAddNode(e.target.value, true, e);
         });
 
         async function handleRandomNode(e) {
