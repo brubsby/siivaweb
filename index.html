@@ -420,16 +420,26 @@
                                 <meta name="referrer" content="no-referrer">
                                 <base href="https://siivagunner.wiki/wiki/" target="_blank">
                                 <style>
+                                    /* Scrollbar Styling */
+                                    ::-webkit-scrollbar { width: 10px; height: 10px; }
+                                    ::-webkit-scrollbar-track { background: #1e1e1e; }
+                                    ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+                                    ::-webkit-scrollbar-thumb:hover { background: #555; }
+                                    ::-webkit-scrollbar-corner { background: #1e1e1e; }
+
+                                    /* Core Styles */
                                     body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; }
                                     img { max-width: 100%; height: auto; }
                                     a { color: #4a90e2; text-decoration: none; }
                                     a:hover { text-decoration: underline; }
                                     h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; }
                                     .mw-parser-output { max-width: 100%; }
-                                    /* Table styling fix for dark mode */
-                                    table { color: #ccc; }
-                                    th { background-color: #333; color: #eee; }
-                                    td { background-color: #222; }
+                                    
+                                    /* Aggressive Table/Infobox Styling */
+                                    table, .infobox { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; }
+                                    th { background-color: #333 !important; color: #eee !important; border-color: #444 !important; }
+                                    td { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; }
+                                    caption { color: #eee !important; }
                                 </style>
                             </head>
                             <body>
