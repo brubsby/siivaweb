@@ -316,6 +316,84 @@
             });
         });
 
+        // --- Popup Logic ---
+        let wikiWindow = null;
+        let youtubeWindow = null;
+
+        async function showPage(node) {
+            const title = node.id; // Use node.id as the page title
+            // 1. Open Wiki Page
+            const wikiUrl = "https://siivagunner.wiki/wiki/" + encodeURIComponent(title);
+            if (wikiWindow && !wikiWindow.closed) {
+                wikiWindow.location.href = wikiUrl;
+                wikiWindow.focus();
+            } else {
+                wikiWindow = window.open(wikiUrl, "SiIvaWiki", "width=800,height=900,left=0,top=0");
+                if (!wikiWindow) {
+                    console.warn("Wiki window popup blocked!");
+                    alert("Please allow popups for this site to view Wiki pages.");
+                }
+            }
+
+            // 2. Conditionally Find and Open YouTube Video for 'rip' nodes
+            if (node.type === 'rip') { // Only open YouTube if it's a Rip node
+                try {
+                    const data = await fetchApi({
+                        action: 'query',
+                        prop: 'revisions',
+                        titles: title,
+                        rvprop: 'content',
+                        format: 'json',
+                        rvslots: 'main' // Modern mediawiki usually requires this
+                    });
+
+                    const pages = data.query.pages;
+                    const pageId = Object.keys(pages)[0];
+                    if (pageId !== "-1") {
+                        const page = pages[pageId];
+                        let content = "";
+                        if (page.revisions && page.revisions[0]) {
+                            if (page.revisions[0].slots) {
+                                content = page.revisions[0].slots.main['*'];
+                            } else {
+                                content = page.revisions[0]['*'];
+                            }
+                        }
+                        
+                        let videoId = null;
+                        
+                        // Try 1: Check for |id=
+                        const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(content);
+                        if (idMatch) {
+                            videoId = idMatch[1];
+                        } else {
+                            // Try 2: Check for |link= which might contain just the ID or a full URL
+                            const linkMatch = /\|\s*link\s*=\s*(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(content);
+                            if (linkMatch) {
+                                videoId = linkMatch[1];
+                            }
+                        }
+
+                        if (videoId) {
+                            const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                            if (youtubeWindow && !youtubeWindow.closed) {
+                                youtubeWindow.location.href = ytUrl;
+                                youtubeWindow.focus();
+                            } else {
+                                youtubeWindow = window.open(ytUrl, "SiIvaYouTube", "width=600,height=400,left=810,top=0");
+                                if (!youtubeWindow) {
+                                    console.warn("YouTube window popup blocked!");
+                                    alert("Please allow popups for this site to view YouTube videos.");
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error finding video:", e);
+                }
+            }
+        }
+
         // --- Sync Graph Data to Pixi ---
         function updatePixiObjects() {
             // Remove sprites for deleted nodes
@@ -348,6 +426,7 @@
                     
                     sprite.on('click', (e) => {
                         if (dragState.isDragging) return;
+                        showPage(n);
                         expandNode(n);
                     });
                     
