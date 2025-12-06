@@ -321,8 +321,9 @@
         let youtubeWindow = null;
 
         async function showPage(node) {
-            const title = node.id; // Use node.id as the page title
-            // 1. Open Wiki Page
+            const title = node.id;
+            
+            // --- 1. Wiki Popup (Direct Navigation) ---
             const wikiUrl = "https://siivagunner.wiki/wiki/" + encodeURIComponent(title);
             if (wikiWindow && !wikiWindow.closed) {
                 wikiWindow.location.href = wikiUrl;
@@ -330,61 +331,75 @@
             } else {
                 wikiWindow = window.open(wikiUrl, "SiIvaWiki", "width=800,height=900,left=0,top=0");
                 if (!wikiWindow) {
-                    console.warn("Wiki window popup blocked!");
-                    alert("Please allow popups for this site to view Wiki pages.");
+                    console.warn("Wiki popup blocked");
+                    alert("Please allow popups.");
                 }
             }
 
-            // 2. Conditionally Find and Open YouTube Video for 'rip' nodes
-            if (node.type === 'rip') { // Only open YouTube if it's a Rip node
+            // --- 2. YouTube Popup (Embed Injection) ---
+            if (node.type === 'rip') {
                 try {
-                    const data = await fetchApi({
+                    // Fetch Raw Wikitext to find ID
+                    const rawData = await fetchApi({
                         action: 'query',
                         prop: 'revisions',
                         titles: title,
                         rvprop: 'content',
                         format: 'json',
-                        rvslots: 'main' // Modern mediawiki usually requires this
+                        rvslots: 'main'
                     });
 
-                    const pages = data.query.pages;
+                    const pages = rawData.query.pages;
                     const pageId = Object.keys(pages)[0];
                     if (pageId !== "-1") {
                         const page = pages[pageId];
-                        let content = "";
+                        let rawContent = "";
                         if (page.revisions && page.revisions[0]) {
-                            if (page.revisions[0].slots) {
-                                content = page.revisions[0].slots.main['*'];
-                            } else {
-                                content = page.revisions[0]['*'];
-                            }
+                            rawContent = page.revisions[0].slots ? page.revisions[0].slots.main['*'] : page.revisions[0]['*'];
                         }
-                        
+
                         let videoId = null;
-                        
-                        // Try 1: Check for |id=
-                        const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(content);
-                        if (idMatch) {
-                            videoId = idMatch[1];
-                        } else {
-                            // Try 2: Check for |link= which might contain just the ID or a full URL
-                            const linkMatch = /\|\s*link\s*=\s*(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(content);
-                            if (linkMatch) {
-                                videoId = linkMatch[1];
-                            }
+                        const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(rawContent);
+                        if (idMatch) videoId = idMatch[1];
+                        else {
+                            const linkMatch = /\|\s*link\s*=\s*(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(rawContent);
+                            if (linkMatch) videoId = linkMatch[1];
                         }
 
                         if (videoId) {
-                            const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
-                            if (youtubeWindow && !youtubeWindow.closed) {
-                                youtubeWindow.location.href = ytUrl;
-                                youtubeWindow.focus();
+                            // Reuse logic: Open empty if needed
+                            if (!youtubeWindow || youtubeWindow.closed) {
+                                youtubeWindow = window.open("", "SiIvaYouTube", "width=600,height=400,left=810,top=0");
+                                if (!youtubeWindow) return; 
+                            }
+                            
+                            youtubeWindow.focus();
+
+                            // Check if we already have our player structure
+                            const playerFrame = youtubeWindow.document.getElementById('siivaPlayer');
+                            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+
+                            if (playerFrame) {
+                                // Just update src
+                                playerFrame.src = embedUrl;
                             } else {
-                                youtubeWindow = window.open(ytUrl, "SiIvaYouTube", "width=600,height=400,left=810,top=0");
-                                if (!youtubeWindow) {
-                                    console.warn("YouTube window popup blocked!");
-                                    alert("Please allow popups for this site to view YouTube videos.");
-                                }
+                                // Initialize Window with full height CSS
+                                youtubeWindow.document.open();
+                                youtubeWindow.document.write(`
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <title>SiIvaPlayer</title>
+                                        <style>
+                                            html, body { height: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <iframe id="siivaPlayer" width="100%" height="100%" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                                    </body>
+                                    </html>
+                                `);
+                                youtubeWindow.document.close();
                             }
                         }
                     }
