@@ -957,7 +957,27 @@
             if (e.key === 'Enter') handleAddNode(e.target.value, true);
         });
 
-        async function handleRandomNode() {
+        async function handleRandomNode(e) {
+            // 1. Create Placeholder Node at Mouse Position
+            const startX = e.clientX || window.innerWidth / 2;
+            const startY = e.clientY || window.innerHeight / 2;
+            const tempId = "Loading... " + Date.now();
+            
+            // Calculate velocity vector towards center
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            let dx = centerX - startX;
+            let dy = centerY - startY;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+            const speed = 15; // Initial burst speed
+            
+            const placeholderNode = addNode(tempId, 'rip', startX, startY);
+            placeholderNode.vx = (dx / dist) * speed;
+            placeholderNode.vy = (dy / dist) * speed;
+            placeholderNode.vibrationStart = Date.now(); // Start vibrating
+            
+            restartSimulation();
+
             try {
                 const data = await fetchApi({
                     action: 'query',
@@ -970,14 +990,34 @@
                 if (data.query && data.query.random && data.query.random.length > 0) {
                     const page = data.query.random[0];
                     const val = page.title;
-                    // Add and expand
-                    const node = addNode(val, 'rip', window.innerWidth/2, window.innerHeight/2);
+                    
+                    // 2. Update Node
+                    // Check if node with this title already exists
+                    let finalNode = nodes.find(n => n.id === val);
+                    
+                    if (finalNode) {
+                        // Node already exists, remove placeholder and use existing
+                        nodes = nodes.filter(n => n.id !== tempId);
+                        // finalNode might be anywhere, let's just use it
+                    } else {
+                        // Rename placeholder to real title
+                        placeholderNode.id = val;
+                        finalNode = placeholderNode;
+                    }
+                    
                     restartSimulation();
-                    showPage(node);
-                    expandNode(node);
+                    showPage(finalNode);
+                    expandNode(finalNode);
+                } else {
+                     // Cleanup if no data
+                     nodes = nodes.filter(n => n.id !== tempId);
+                     restartSimulation();
                 }
             } catch (e) {
                 if (e.name !== 'AbortError') console.error("Error fetching random node:", e);
+                // Cleanup on error
+                nodes = nodes.filter(n => n.id !== tempId);
+                restartSimulation();
             }
         }
 
