@@ -12,7 +12,7 @@
             width: 100%;
             height: 100%;
             border: none;
-            background: #fff;
+            background: #1e1e1e;
         }
         /* Custom Title Bar Style */
         .dark-titlebar {
@@ -389,7 +389,7 @@
                 // Show loading in Wiki Frame
                 const wikiInner = document.getElementById('wikiInnerFrame'); // JSFrame adds to DOM
                 if (wikiInner) {
-                    wikiInner.srcdoc = `<div style="font-family:sans-serif;padding:20px;color:#555;">Loading ${displayTitle}...</div>`;
+                    wikiInner.srcdoc = `<div style="font-family:sans-serif;padding:20px;color:#ccc;background:#1e1e1e;height:100vh;">Loading ${displayTitle}...</div>`;
                 }
 
                 // Fetch Wiki Content
@@ -403,7 +403,16 @@
                     });
 
                     if (parseData.parse && parseData.parse.text && wikiInner) {
-                        const content = parseData.parse.text['*'];
+                        let content = parseData.parse.text['*'];
+                        // Fix relative image URLs to be absolute (handling single and double quotes)
+                        content = content.replace(/src=["']\//g, 'src="https://siivagunner.wiki/');
+                        content = content.replace(/srcset=["']\//g, 'srcset="https://siivagunner.wiki/');
+                        content = content.replace(/, \//g, ', https://siivagunner.wiki/');
+                        
+                        // Remove lazy loading which can cause issues in srcdoc/iframes
+                        content = content.replace(/loading="lazy"/g, '');
+                        content = content.replace(/decoding="async"/g, '');
+
                         const html = `
                             <!DOCTYPE html>
                             <html>
@@ -411,11 +420,16 @@
                                 <meta name="referrer" content="no-referrer">
                                 <base href="https://siivagunner.wiki/wiki/" target="_blank">
                                 <style>
-                                    body { font-family: sans-serif; padding: 15px; color: #000; line-height: 1.5; }
+                                    body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; }
                                     img { max-width: 100%; height: auto; }
-                                    a { color: #002bb8; text-decoration: none; }
+                                    a { color: #4a90e2; text-decoration: none; }
                                     a:hover { text-decoration: underline; }
+                                    h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; }
                                     .mw-parser-output { max-width: 100%; }
+                                    /* Table styling fix for dark mode */
+                                    table { color: #ccc; }
+                                    th { background-color: #333; color: #eee; }
+                                    td { background-color: #222; }
                                 </style>
                             </head>
                             <body>
@@ -427,7 +441,7 @@
                         wikiInner.srcdoc = html;
                     }
                 } catch (e) {
-                    if(wikiInner) wikiInner.srcdoc = `<div style="color:red;padding:20px;">Error loading content.</div>`;
+                    if(wikiInner) wikiInner.srcdoc = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content.</div>`;
                 }
             }
 
