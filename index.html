@@ -140,6 +140,7 @@
             <strong>Left-click</strong> node to fetch connections.<br>
             <strong>Right-click</strong> node to prune.<br>
             <strong>Drag</strong> background to pan, wheel to zoom.<br>
+            <strong>Esc</strong> to cancel expansion.<br>
             <span id="nodeCount" style="color: #fff;">Nodes: 0</span>
         </div>
         
@@ -164,8 +165,8 @@
         </div>
         
         <div class="control-group">
-            <label for="centerForce">Center Force: <span id="centerForceVal">0.01</span></label>
-            <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.01">
+            <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
+            <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.05">
         </div>
         <div class="control-group">
             <label for="repelForce">Repel Force: <span id="repelForceVal">100</span></label>
@@ -193,6 +194,21 @@
         let linkDistanceBase = 25;
         let tooltip = document.getElementById('tooltip');
         let abortExpansion = false;
+        let globalAbortController = new AbortController();
+
+        function wait(ms, signal) {
+            return new Promise((resolve, reject) => {
+                if (signal.aborted) {
+                    reject(new DOMException('Aborted', 'AbortError'));
+                    return;
+                }
+                const timer = setTimeout(resolve, ms);
+                signal.addEventListener('abort', () => {
+                    clearTimeout(timer);
+                    reject(new DOMException('Aborted', 'AbortError'));
+                }, { once: true });
+            });
+        }
 
         // --- PixiJS Setup ---
         const app = new PIXI.Application({
@@ -243,8 +259,8 @@
             .force("link", d3.forceLink(links).id(d => d.id).distance(getLinkDistance).strength(0.05))
             .force("charge", d3.forceManyBody().strength(-100))
             .force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
-            .force("x", d3.forceX(window.innerWidth / 2).strength(0.01))
-            .force("y", d3.forceY(window.innerHeight / 2).strength(0.01));
+            .force("x", d3.forceX(window.innerWidth / 2).strength(0.05))
+            .force("y", d3.forceY(window.innerHeight / 2).strength(0.05));
 
         function getLinkDistance(d) {
             const source = d.source;
@@ -441,7 +457,8 @@
                         const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(rawContent);
                         if (idMatch) videoId = idMatch[1];
                         else {
-                            const linkMatch = /\|\s*link\s*=\s*(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(rawContent);
+                            // Match 'link' or 'url', optional brackets, optional YouTube prefix
+                            const linkMatch = /\|\s*(?:link|url)\s*=\s*(?:\[)?(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(rawContent);
                             if (linkMatch) videoId = linkMatch[1];
                         }
                     }
@@ -606,23 +623,24 @@
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 abortExpansion = true;
-                // Visual feedback?
+                globalAbortController.abort();
+                globalAbortController = new AbortController();
                 console.log("Expansion aborted by user.");
             }
         });
 
-        async function fetchApi(params) {
+        async function fetchApi(params, signal) {
             const url = new URL(API_BASE);
             url.search = new URLSearchParams({ ...params, origin: '*' });
-            const response = await fetch(url);
+            const response = await fetch(url, { signal });
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             return response.json();
         }
 
-        async function getPageCategories(title) {
+        async function getPageCategories(title, signal) {
             const data = await fetchApi({
                 action: 'query', format: 'json', prop: 'categories', titles: title, cllimit: 'max', clshow: '!hidden'
-            });
+            }, signal);
             if (!data.query || !data.query.pages) return null; // Error/Missing
             const pages = data.query.pages;
             const pageId = Object.keys(pages)[0];
@@ -630,31 +648,9 @@
             return (pages[pageId].categories || []).map(c => ({ title: c.title, ns: c.ns }));
         }
 
-        async function getCategoryMembers(title) {
+        async function getCategoryMembers(title, signal) {
             let allMembers = [];
             let continueToken = null;
-            let pageExists = true; // Assume exists unless proven otherwise (list queries are tricky)
-
-            // Initial check to see if category page exists? 
-            // categorymembers list doesn't explicitly fail if cat missing, just returns empty.
-            // But we can check if title is valid via basic query first?
-            // Optimization: Just assume empty list = valid empty category unless we want strict checking.
-            // BUT user wants "doesn't correspond to actual page".
-            // Let's do a quick check for existence first if we want to be sure.
-            
-            // Actually, let's keep it simple: If list is empty, we can't be sure if it's empty or missing without a prop=info check.
-            // Let's update `getPageCategories` first as that's the main entry for "Rips".
-            
-            // For categories, `categorymembers` returns empty if empty OR missing.
-            // Let's leave getCategoryMembers returning [] for now, as usually you add Rips.
-            // If the user adds a Category manually, we can check `getPageCategories` (prop=info) logic.
-            
-            // Revisiting the logic: The user prompt implies "If a node ADDED...".
-            // If I add "Category:Fake", it has 0 members. Should it delete?
-            // Probably yes, if it's invalid.
-            
-            // Let's try to infer from the first request.
-            // If I modify getCategoryMembers to just return [], expandNode logic will be simpler if we handle specific Rip deletion first.
             
             do {
                 const params = {
@@ -670,12 +666,7 @@
                     params.cmcontinue = continueToken;
                 }
 
-                const data = await fetchApi(params);
-                
-                // If it's the first request and we get nothing, is it missing?
-                // The API doesn't tell us easily in list mode.
-                // We'll trust the User Input verification step to catch most.
-                // But for `getPageCategories` (Rips), the -1 check is robust.
+                const data = await fetchApi(params, signal);
                 
                 if (data.query && data.query.categorymembers) {
                     allMembers = allMembers.concat(data.query.categorymembers);
@@ -731,10 +722,13 @@
             d.visited = true; // Mark as visited/expanded
             d.vibrationStart = Date.now();
             
+            // Capture the current signal for this expansion process
+            const signal = globalAbortController.signal;
+            
             try {
                 let newNeighbors = [];
                 if (d.type === 'rip') {
-                    const categories = await getPageCategories(d.id);
+                    const categories = await getPageCategories(d.id, signal);
                     if (categories === null) {
                         // Page does not exist -> Pop out of existence
                         nodes = nodes.filter(n => n.id !== d.id);
@@ -744,22 +738,19 @@
                     }
                     newNeighbors = categories.map(cat => ({ ...cat, direction: 'parent' }));
                 } else {
-                    const members = await getCategoryMembers(d.id);
-                    // For categories, empty list usually just means empty/missing, difficult to distinguish without extra call.
-                    // We'll treat empty as valid for now unless we add an existence check.
+                    const members = await getCategoryMembers(d.id, signal);
                     newNeighbors = members.map(mem => ({ ...mem, direction: 'child' }));
                 }
 
                 d.vibrationStart = null;
-                // Check abort before starting loop
-                if (abortExpansion) return;
+                if (signal.aborted) return;
 
                 const angleStep = (2 * Math.PI) / (newNeighbors.length || 1);
                 
                 let currentDelay = 20;
 
                 for (let i = 0; i < newNeighbors.length; i++) {
-                    if (abortExpansion) break; // Check abort inside loop
+                    if (signal.aborted) break;
 
                     const n = newNeighbors[i];
                     const type = n.ns === 14 ? 'category' : 'rip';
@@ -780,12 +771,12 @@
 
                     if (added) {
                         restartSimulation();
-                        await new Promise(r => setTimeout(r, currentDelay));
+                        await wait(currentDelay, signal);
                         currentDelay = Math.max(0, currentDelay * 0.9); // Accelerate down to 0ms
                     }
                 }
             } catch (e) {
-                console.error(e);
+                if (e.name !== 'AbortError') console.error(e);
                 d.vibrationStart = null;
             } finally {
                 d.expanding = false;
@@ -823,23 +814,30 @@
             if (nodesToRemove.size > 0) {
                 const toRemoveList = Array.from(nodesToRemove);
                 let currentDelay = 20;
+                const signal = globalAbortController.signal;
 
-                for (const nodeId of toRemoveList) {
-                    nodes = nodes.filter(n => n.id !== nodeId);
-                    links = links.filter(l => l.source.id !== nodeId && l.target.id !== nodeId);
-                    
-                    // Recalc degrees
-                    nodes.forEach(n => n.degree = 0);
-                    links.forEach(l => {
-                        const s = nodes.find(n => n.id === (l.source.id || l.source));
-                        const t = nodes.find(n => n.id === (l.target.id || l.target));
-                        if (s) s.degree++;
-                        if (t) t.degree++;
-                    });
+                try {
+                    for (const nodeId of toRemoveList) {
+                        if (signal.aborted) break;
 
-                    restartSimulation();
-                    await new Promise(r => setTimeout(r, currentDelay));
-                    currentDelay = Math.max(0, currentDelay * 0.9);
+                        nodes = nodes.filter(n => n.id !== nodeId);
+                        links = links.filter(l => l.source.id !== nodeId && l.target.id !== nodeId);
+                        
+                        // Recalc degrees
+                        nodes.forEach(n => n.degree = 0);
+                        links.forEach(l => {
+                            const s = nodes.find(n => n.id === (l.source.id || l.source));
+                            const t = nodes.find(n => n.id === (l.target.id || l.target));
+                            if (s) s.degree++;
+                            if (t) t.degree++;
+                        });
+
+                        restartSimulation();
+                        await wait(currentDelay, signal);
+                        currentDelay = Math.max(0, currentDelay * 0.9);
+                    }
+                } catch (e) {
+                     if (e.name !== 'AbortError') console.error(e);
                 }
                 tooltip.style.display = 'none'; // Hide tooltip after deletion
             }
@@ -870,7 +868,7 @@
                     format: 'json',
                     titles: val,
                     redirects: 1
-                });
+                }, globalAbortController.signal);
                 
                 if (data.query && data.query.pages) {
                     const pages = data.query.pages;
@@ -895,6 +893,7 @@
                 expandNode(node);
 
             } catch (e) {
+                if (e.name === 'AbortError') return;
                 console.error("Error checking page type:", e);
                 const type = val.startsWith("Category:") ? 'category' : 'rip';
                 const node = addNode(val, type, window.innerWidth/2, window.innerHeight/2);
