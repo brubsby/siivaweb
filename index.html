@@ -163,6 +163,9 @@
             <input type="text" id="catInput" placeholder="Category (e.g. Rips featuring Mario)" value="">
             <button id="addCatBtn">Add Cat</button>
         </div>
+        <div class="input-group">
+            <button id="randomBtn" style="width: 100%; background: #ff9f43;">Random Rip</button>
+        </div>
         
         <div class="control-group">
             <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
@@ -550,7 +553,10 @@
                     sprite.on('globalmousemove', onDragMove); // Pixi standard drag
                     
                     sprite.on('click', (e) => {
-                        if (dragState.isDragging) return;
+                        if (dragState.didMove) { // If there was movement, it was a drag, so don't activate
+                            dragState.didMove = false; // Reset for next interaction
+                            return;
+                        }
                         showPage(n);
                         expandNode(n);
                     });
@@ -599,12 +605,10 @@
             .on("dblclick.zoom", null);
 
         // Drag Logic (Pixi)
-        let dragState = { isDragging: false, data: null, sprite: null };
+        let dragState = { isDragging: false, data: null, sprite: null, didMove: false, initialPointerPos: null };
+        const DRAG_THRESHOLD = 5; // Pixels to move before considered a drag
 
         function onDragStart(event) {
-            // Prevent D3 Zoom from taking over
-            // event.originalEvent.stopPropagation(); // Might interfere
-            
             simulation.alphaTarget(0.3).restart();
             this.nodeData.fx = this.nodeData.x;
             this.nodeData.fy = this.nodeData.y;
@@ -612,8 +616,9 @@
             dragState.isDragging = true;
             dragState.data = event.data;
             dragState.sprite = this;
-            
-            // Disable zoom while dragging node
+            dragState.didMove = false; // Reset for this drag interaction
+            dragState.initialPointerPos = event.data.global.clone(); // Store initial position
+
             d3.select(app.view).on(".zoom", null);
         }
 
@@ -629,6 +634,7 @@
             dragState.isDragging = false;
             dragState.data = null;
             dragState.sprite = null;
+            dragState.initialPointerPos = null; // Clear initial position
 
             // Re-enable zoom
             d3.select(app.view).call(zoom).on("dblclick.zoom", null);
@@ -636,13 +642,21 @@
 
         function onDragMove() {
             if (dragState.isDragging && dragState.sprite) {
-                // Get local position in viewport (accounting for zoom/pan)
+                const currentPointerPos = dragState.data.global;
+                // Check if pointer has moved significantly from initial position
+                const distance = Math.sqrt(
+                    Math.pow(currentPointerPos.x - dragState.initialPointerPos.x, 2) +
+                    Math.pow(currentPointerPos.y - dragState.initialPointerPos.y, 2)
+                );
+                if (distance > DRAG_THRESHOLD) { 
+                    dragState.didMove = true;
+                }
+
                 const newPosition = dragState.data.getLocalPosition(viewport);
                 dragState.sprite.nodeData.fx = newPosition.x;
                 dragState.sprite.nodeData.fy = newPosition.y;
             }
         }
-
         // --- Core Logic (Same as before) ---
         
         window.addEventListener('keydown', (e) => {
@@ -942,6 +956,32 @@
         document.getElementById('catInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleAddNode(e.target.value, true);
         });
+
+        async function handleRandomNode() {
+            try {
+                const data = await fetchApi({
+                    action: 'query',
+                    format: 'json',
+                    list: 'random',
+                    rnnamespace: 0, // Main namespace only (Rips)
+                    rnlimit: 1
+                }, globalAbortController.signal);
+                
+                if (data.query && data.query.random && data.query.random.length > 0) {
+                    const page = data.query.random[0];
+                    const val = page.title;
+                    // Add and expand
+                    const node = addNode(val, 'rip', window.innerWidth/2, window.innerHeight/2);
+                    restartSimulation();
+                    showPage(node);
+                    expandNode(node);
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error("Error fetching random node:", e);
+            }
+        }
+
+        document.getElementById('randomBtn').addEventListener('click', handleRandomNode);
 
         document.getElementById('centerForce').addEventListener('input', (e) => {
             const v = +e.target.value;
