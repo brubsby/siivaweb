@@ -911,8 +911,45 @@
             if (isExplicitCategory && !val.startsWith("Category:")) {
                 val = "Category:" + val;
             }
+            
+            // First, determine the final title and type by performing the API query
+            let finalTitle = val;
+            let finalType = isExplicitCategory ? 'category' : 'rip';
+            let initialApiCallSuccess = false; // Track if the initial API call succeeds
+            
+            try {
+                const data = await fetchApi({
+                    action: 'query',
+                    format: 'json',
+                    titles: val,
+                    redirects: 1
+                }, globalAbortController.signal);
 
-            // Visual Start
+                if (data.query && data.query.pages) {
+                    const pages = data.query.pages;
+                    const pageId = Object.keys(pages)[0];
+                    if (pageId !== "-1") {
+                        const page = pages[pageId];
+                        finalTitle = page.title;
+                        const ns = page.ns;
+                        finalType = ns === 14 ? 'category' : 'rip';
+                        initialApiCallSuccess = true;
+                    }
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                console.error("Error during initial API check for handleAddNode:", e);
+                // If initial API call fails, we proceed with the user's input as fallback
+            }
+
+            // Check if node already exists based on finalTitle
+            let existingNode = nodes.find(n => n.id === finalTitle);
+            if (existingNode) {
+                expandNode(existingNode);
+                return;
+            }
+
+            // If we reach here, the node does not exist, so proceed with animation
             let startX = window.innerWidth / 2;
             let startY = window.innerHeight / 2;
             
@@ -945,60 +982,26 @@
             restartSimulation();
 
             try {
-                // Check namespace via API
-                const data = await fetchApi({
-                    action: 'query',
-                    format: 'json',
-                    titles: val,
-                    redirects: 1
-                }, globalAbortController.signal);
-                
-                let finalTitle = val;
-                let finalType = isExplicitCategory ? 'category' : 'rip';
-
-                if (data.query && data.query.pages) {
-                    const pages = data.query.pages;
-                    const pageId = Object.keys(pages)[0];
-                    if (pageId !== "-1") {
-                        const page = pages[pageId];
-                        finalTitle = page.title;
-                        const ns = page.ns;
-                        finalType = ns === 14 ? 'category' : 'rip';
-                    }
-                }
-                
-                // Update Node
-                let finalNode = nodes.find(n => n.id === finalTitle);
-                
-                if (finalNode) {
-                    // Node already exists, remove placeholder
-                    nodes = nodes.filter(n => n.id !== tempId);
-                } else {
-                    // Rename placeholder
-                    placeholderNode.id = finalTitle;
-                    placeholderNode.type = finalType;
-                    finalNode = placeholderNode;
-                }
+                // Now update the placeholder with the final determined title and type
+                // If initialApiCallSuccess is false, it means API call failed or page doesn't exist,
+                // so finalTitle will be just the user's input `val`.
+                placeholderNode.id = finalTitle;
+                placeholderNode.type = finalType;
                 
                 restartSimulation();
-                expandNode(finalNode);
+                expandNode(placeholderNode);
 
             } catch (e) {
                 if (e.name === 'AbortError') {
+                    // Cleanup placeholder if aborted during animation (unlikely, but safe)
                     nodes = nodes.filter(n => n.id !== tempId);
                     restartSimulation();
                     return;
                 }
-                console.error("Error checking page type:", e);
-                let finalNode = nodes.find(n => n.id === val);
-                if (!finalNode) {
-                    placeholderNode.id = val;
-                    finalNode = placeholderNode;
-                } else {
-                    nodes = nodes.filter(n => n.id !== tempId);
-                }
-                restartSimulation();
-                expandNode(finalNode);
+                console.error("Error during handleAddNode animation phase:", e);
+                // If something goes wrong here, the placeholder will remain as "Loading..."
+                // Or we can expand it as a fallback with its current (possibly temp) ID
+                expandNode(placeholderNode);
             }
         }
 
@@ -1019,27 +1022,8 @@
         });
 
         async function handleRandomNode(e) {
-            // 1. Create Placeholder Node at Mouse Position
-            const startX = e.clientX || window.innerWidth / 2;
-            const startY = e.clientY || window.innerHeight / 2;
-            const tempId = "Loading... " + Date.now();
-            
-            // Calculate velocity vector towards center
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            let dx = centerX - startX;
-            let dy = centerY - startY;
-            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-            const speed = 15; // Initial burst speed
-            
-            const placeholderNode = addNode(tempId, 'rip', startX, startY);
-            placeholderNode.vx = (dx / dist) * speed;
-            placeholderNode.vy = (dy / dist) * speed;
-            placeholderNode.vibrationStart = Date.now(); // Start vibrating
-            
-            restartSimulation();
-
             try {
+                // Fetch random rip data first
                 const data = await fetchApi({
                     action: 'query',
                     format: 'json',
@@ -1052,33 +1036,48 @@
                     const page = data.query.random[0];
                     const val = page.title;
                     
-                    // 2. Update Node
-                    // Check if node with this title already exists
-                    let finalNode = nodes.find(n => n.id === val);
-                    
-                    if (finalNode) {
-                        // Node already exists, remove placeholder and use existing
-                        nodes = nodes.filter(n => n.id !== tempId);
-                        // finalNode might be anywhere, let's just use it
-                    } else {
-                        // Rename placeholder to real title
-                        placeholderNode.id = val;
-                        finalNode = placeholderNode;
+                    // Check if node already exists
+                    let existingNode = nodes.find(n => n.id === val);
+                    if (existingNode) {
+                        showPage(existingNode);
+                        expandNode(existingNode);
+                        return;
                     }
+
+                    // Node does not exist, proceed with animation
+                    const startX = e.clientX || window.innerWidth / 2;
+                    const startY = e.clientY || window.innerHeight / 2;
+                    const tempId = "Loading... " + Date.now();
+                    
+                    // Calculate velocity vector towards center
+                    const centerX = window.innerWidth / 2;
+                    const centerY = window.innerHeight / 2;
+                    let dx = centerX - startX;
+                    let dy = centerY - startY;
+                    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                    const speed = 15; // Initial burst speed
+                    
+                    const placeholderNode = addNode(tempId, 'rip', startX, startY);
+                    placeholderNode.vx = (dx / dist) * speed;
+                    placeholderNode.vy = (dy / dist) * speed;
+                    placeholderNode.vibrationStart = Date.now(); // Start vibrating
+                    
+                    restartSimulation();
+
+                    // Update Node
+                    placeholderNode.id = val;
+                    finalNode = placeholderNode; // FinalNode is a reference to placeholderNode
                     
                     restartSimulation();
                     showPage(finalNode);
                     expandNode(finalNode);
                 } else {
-                     // Cleanup if no data
-                     nodes = nodes.filter(n => n.id !== tempId);
-                     restartSimulation();
+                     // No data, do nothing
                 }
             } catch (e) {
                 if (e.name !== 'AbortError') console.error("Error fetching random node:", e);
-                // Cleanup on error
-                nodes = nodes.filter(n => n.id !== tempId);
-                restartSimulation();
+                // No placeholder created yet, so no cleanup needed for placeholder if error happens before placeholder creation
+                // If error happens after placeholder creation but before update, the placeholder will remain "Loading..." which is fine.
             }
         }
 
