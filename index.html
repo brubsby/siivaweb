@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SiIvaGunner Rip Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1e1e1e;
+            color: #ccc;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+        svg {
+            width: 100vw;
+            height: 100vh;
+        }
+        .node circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+            cursor: pointer;
+            transition: fill 0.3s;
+        }
+        .node text {
+            pointer-events: none;
+            font-size: 12px;
+            fill: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: 0 1px 0 #000;
+            display: none;
+        }
+        .node:hover text {
+            display: block;
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 1px;
+            marker-end: url(#arrow);
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            pointer-events: none;
+            z-index: 200;
+            display: none;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            max-width: 300px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .control-group label {
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+        .help-text {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 12px;
+            line-height: 1.4;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+        .help-text strong {
+            color: #69b3a2;
+        }
+        .input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+        }
+        .input-group input[type="text"] {
+            background: #333;
+            border: 1px solid #555;
+            color: #eee;
+            padding: 5px;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+        .input-group button {
+            background: #69b3a2;
+            border: none;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .input-group button:hover {
+            background: #5aa090;
+        }
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading data...</div>
+    
+    <div class="controls">
+        <div class="help-text">
+            <strong>Left-click</strong> node to fetch connections.<br>
+            <strong>Right-click</strong> node to remove subtree.<br>
+            <strong>Drag</strong> background to pan, wheel to zoom.
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4a90e2;"></div>
+                <span>Rip (Page)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff9f43;"></div>
+                <span>Category</span>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="startPhrase" placeholder="Page Title" value="">
+            <button id="addNodeBtn">Add</button>
+        </div>
+        
+        <div class="control-group">
+            <label for="centerForce">Center Force: <span id="centerForceVal">0.01</span></label>
+            <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.01">
+        </div>
+        <div class="control-group">
+            <label for="repelForce">Repel Force: <span id="repelForceVal">100</span></label>
+            <input type="range" id="repelForce" min="0" max="1000" value="100">
+        </div>
+        <div class="control-group">
+            <label for="linkForce">Link Force: <span id="linkForceVal">0.05</span></label>
+            <input type="range" id="linkForce" min="0" max="1" step="0.05" value="0.05">
+        </div>
+        <div class="control-group">
+            <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
+            <input type="range" id="linkDistance" min="10" max="300" value="25">
+        </div>
+    </div>
+
+    <svg>
+        <defs>
+            <marker id="arrow" viewBox="0 -5 10 10" refX="20" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0,-5L10,0L0,5" fill="#999"></path>
+            </marker>
+        </defs>
+    </svg>
+
+    <script>
+        // --- Configuration & State ---
+        const NODE_RADIUS = 10;
+        const INITIAL_RIP = "Athletic Theme (PAL Version) - Super Mario World";
+        const API_BASE = "https://siivagunner.wiki/w/api.php";
+        
+        // Graph Data
+        let nodes = [];
+        let links = [];
+        let linkDistanceBase = 25; // New default
+
+        function getLinkDistance(d) {
+            const source = d.source;
+            const target = d.target;
+            
+            let dist = linkDistanceBase;
+
+            // Type-based spacing
+            if (source.type === 'category' && target.type === 'category') {
+                dist *= 2.0;
+            } else if (source.type === 'category' || target.type === 'category') {
+                dist *= 1.2;
+            } else {
+                dist *= 0.8;
+            }
+
+            // Degree-based spacing (prevent hub crowding)
+            const combinedDegree = (source.degree || 0) + (target.degree || 0);
+            if (combinedDegree > 5) {
+                dist += Math.min(combinedDegree * 2, 100); 
+            }
+
+            return dist;
+        }
+        
+        // --- D3 Setup ---
+        const svg = d3.select("svg");
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        const g = svg.append("g");
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 5])
+            .on("zoom", (event) => g.attr("transform", event.transform));
+        svg.call(zoom);
+
+        // Simulation
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(getLinkDistance).strength(0.05)) // New default
+            .force("charge", d3.forceManyBody().strength(-100)) // New default
+            .force("center", d3.forceCenter(width / 2, height / 2)) 
+            .force("x", d3.forceX(width / 2).strength(0.01)) // New default
+            .force("y", d3.forceY(height / 2).strength(0.01)); // New default
+
+        const statusDiv = document.getElementById('loading');
+        
+        // ... (API Logic omitted for brevity in search match, but kept in file) ...
+        // Note: The below ... comment is just for matching context if needed, but in replace we provide exact old/new.
+        
+        // --- Interactions ---
+        
+        // --- API Logic ---
+
+        function showLoading(show) {
+            statusDiv.style.display = show ? 'block' : 'none';
+        }
+
+        async function fetchApi(params) {
+            const url = new URL(API_BASE);
+            url.search = new URLSearchParams({
+                ...params,
+                origin: '*' // Required for CORS on MediaWiki
+            });
+            
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            return response.json();
+        }
+
+        async function getPageCategories(title) {
+            const data = await fetchApi({
+                action: 'query',
+                format: 'json',
+                prop: 'categories',
+                titles: title,
+                cllimit: 'max',
+                clshow: '!hidden' // Don't show hidden categories if possible, though sometimes useful
+            });
+            
+            if (!data.query || !data.query.pages) {
+                console.warn("API returned no query/pages for:", title, data);
+                return [];
+            }
+
+            const pages = data.query.pages;
+            const pageId = Object.keys(pages)[0];
+            if (pageId === "-1") return []; // Not found
+            
+            return (pages[pageId].categories || []).map(c => ({
+                title: c.title,
+                ns: c.ns
+            }));
+        }
+
+        async function getCategoryMembers(title) {
+            const data = await fetchApi({
+                action: 'query',
+                format: 'json',
+                list: 'categorymembers',
+                cmtitle: title,
+                cmlimit: 'max',
+                cmnamespace: '0|14' // Only pages (0) and subcategories (14)
+            });
+            
+            if (!data.query || !data.query.categorymembers) {
+                console.warn("API returned no query/categorymembers for:", title, data);
+                return [];
+            }
+            
+            return (data.query.categorymembers || []).map(c => ({
+                title: c.title,
+                ns: c.ns
+            }));
+        }
+
+        // --- Graph Logic ---
+
+        function addNode(id, type, x, y) {
+            // Type: 'rip' (ns=0) or 'category' (ns=14)
+            let existing = nodes.find(n => n.id === id);
+            if (existing) return existing;
+
+            const newNode = { 
+                id: id, 
+                type: type, 
+                x: x || width/2, 
+                y: y || height/2,
+                degree: 0 
+            };
+            nodes.push(newNode);
+            return newNode;
+        }
+
+        function addLink(sourceId, targetId) {
+            // Avoid duplicates
+            const exists = links.some(l => 
+                (l.source.id === sourceId && l.target.id === targetId) ||
+                (l.source === sourceId && l.target === targetId)
+            );
+            
+            if (!exists) {
+                links.push({ source: sourceId, target: targetId });
+                
+                // Update degrees
+                const sNode = nodes.find(n => n.id === sourceId);
+                const tNode = nodes.find(n => n.id === targetId);
+                if(sNode) sNode.degree++;
+                if(tNode) tNode.degree++;
+
+                return true;
+            }
+            return false;
+        }
+
+        async function expandNode(d) {
+            if (d.expanding) return; // Prevent double clicks
+            d.expanding = true;
+            
+            // Start vibration
+            d.vibrationStart = Date.now();
+            simulation.alphaTarget(0.3).restart(); // Keep simulation running for animation
+
+            // Removed showLoading(true);
+            
+            try {
+                let newNeighbors = [];
+                
+                if (d.type === 'rip') {
+                    const categories = await getPageCategories(d.id);
+                    newNeighbors = categories.map(cat => {
+                        return { ...cat, direction: 'parent' }; // Category is parent of Rip
+                    });
+                } else {
+                    const members = await getCategoryMembers(d.id);
+                    newNeighbors = members.map(mem => {
+                        return { ...mem, direction: 'child' }; // Member is child of Category
+                    });
+                }
+
+                // Stop vibration
+                d.vibrationStart = null;
+                simulation.alphaTarget(0); // Stop forcing simulation
+
+                // Spread new nodes around parent
+                const angleStep = (2 * Math.PI) / (newNeighbors.length || 1);
+                
+                // Sequential Pop-out
+                for (let i = 0; i < newNeighbors.length; i++) {
+                    const n = newNeighbors[i];
+                    const type = n.ns === 14 ? 'category' : 'rip';
+                    
+                    // Initial position random near parent
+                    const angle = i * angleStep;
+                    const dist = 50;
+                    const nx = d.x + Math.cos(angle) * dist;
+                    const ny = d.y + Math.sin(angle) * dist;
+                    
+                    const nodeObj = addNode(n.title, type, nx, ny);
+                    let addedLink = false;
+                    
+                    if (d.type === 'rip') {
+                        // Link Category -> Rip
+                        if (addLink(nodeObj.id, d.id)) addedLink = true;
+                    } else {
+                        // Link Category -> Member
+                        if (addLink(d.id, nodeObj.id)) addedLink = true;
+                    }
+
+                    if (addedLink) {
+                        updateGraph();
+                        simulation.alpha(0.3).restart(); // Gentle nudge
+                        await new Promise(resolve => setTimeout(resolve, 20)); // 20ms delay per node
+                    }
+                }
+
+                if (newNeighbors.length === 0) {
+                    console.log("No new connections found.");
+                }
+
+            } catch (e) {
+                console.error("Fetch failed", e);
+                d.vibrationStart = null; // Ensure stop on error
+                simulation.alphaTarget(0);
+                alert("Failed to fetch data. See console.");
+            } finally {
+                // showLoading(false); // Removed
+                d.expanding = false;
+            }
+        }
+
+        function handleRightClick(clickedNode) {
+            // 1. Identify neighbors via links
+            const neighbors = [];
+            const connectedLinks = [];
+            
+            links.forEach(l => {
+                if (l.source.id === clickedNode.id) {
+                    neighbors.push(l.target);
+                    connectedLinks.push(l);
+                } else if (l.target.id === clickedNode.id) {
+                    neighbors.push(l.source);
+                    connectedLinks.push(l);
+                }
+            });
+
+            // 2. Logic
+            const nodesToRemove = new Set();
+            
+            if (neighbors.length <= 1) {
+                // Is leaf (or orphan) -> Delete self
+                nodesToRemove.add(clickedNode.id);
+            } else {
+                // Is hub -> Delete adjacent leaves
+                neighbors.forEach(neighbor => {
+                    // Check neighbor's degree
+                    let degree = 0;
+                    links.forEach(l => {
+                        if (l.source.id === neighbor.id || l.target.id === neighbor.id) {
+                            degree++;
+                        }
+                    });
+                    
+                    // If neighbor is only connected to us (degree 1), mark for deletion
+                    if (degree === 1) {
+                        nodesToRemove.add(neighbor.id);
+                    }
+                });
+            }
+
+            if (nodesToRemove.size > 0) {
+                nodes = nodes.filter(n => !nodesToRemove.has(n.id));
+                links = links.filter(l => !nodesToRemove.has(l.source.id) && !nodesToRemove.has(l.target.id));
+                
+                // Recalculate degrees for remaining nodes (optional but good for link distance)
+                nodes.forEach(n => n.degree = 0);
+                links.forEach(l => {
+                    // l.source/target might be object refs or IDs depending on d3 state, usually refs after sim starts
+                    const s = nodes.find(n => n.id === (l.source.id || l.source));
+                    const t = nodes.find(n => n.id === (l.target.id || l.target));
+                    if (s) s.degree++;
+                    if (t) t.degree++;
+                });
+
+                updateGraph();
+                simulation.alpha(0.3).restart();
+            }
+        }
+
+        function updateGraph() {
+            // Nodes
+            const nodeSel = g.select(".nodes").selectAll(".node")
+                .data(nodes, d => d.id);
+            
+            const nodeEnter = nodeSel.enter().append("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("click", (event, d) => {
+                    if (event.defaultPrevented) return;
+                    expandNode(d);
+                })
+                .on("contextmenu", (event, d) => {
+                    event.preventDefault();
+                    handleRightClick(d);
+                });
+
+            nodeEnter.append("circle")
+                .attr("r", NODE_RADIUS)
+                .attr("fill", d => d.type === 'category' ? '#ff9f43' : '#4a90e2');
+
+            nodeEnter.append("text")
+                .attr("dx", 14)
+                .attr("dy", ".35em")
+                .text(d => d.id.replace(/^Category:/, '')); // Clean text for categories
+
+            nodeEnter.append("title")
+                .text(d => d.id);
+
+            nodeSel.exit().remove();
+
+            // Links
+            const linkSel = g.select(".links").selectAll(".link")
+                .data(links, d => (d.source.id || d.source) + "-" + (d.target.id || d.target));
+            
+            linkSel.enter().append("line")
+                .attr("class", "link")
+                .lower();
+
+            linkSel.exit().remove();
+
+            // Restart
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+        }
+        
+        // --- Interactions ---
+
+        document.getElementById('addNodeBtn').addEventListener('click', () => {
+            const input = document.getElementById('startPhrase');
+            const val = input.value.trim();
+            if(val) {
+                // Default to Rip unless starts with Category:
+                const type = val.startsWith("Category:") ? 'category' : 'rip';
+                addNode(val, type, width/2, height/2);
+                updateGraph();
+                simulation.alpha(1).restart();
+            }
+        });
+
+        // Physics Sliders
+        
+        // Center Force (Compactness)
+        document.getElementById('centerForce').addEventListener('input', (e) => {
+            const v = +e.target.value;
+            document.getElementById('centerForceVal').innerText = v;
+            simulation.force("x").strength(v);
+            simulation.force("y").strength(v);
+            simulation.alpha(1).restart();
+        });
+
+        // Repel Force (Charge)
+        document.getElementById('repelForce').addEventListener('input', (e) => {
+            const v = +e.target.value;
+            document.getElementById('repelForceVal').innerText = v;
+            simulation.force("charge").strength(-v); // Negative for repulsion
+            simulation.alpha(1).restart();
+        });
+
+        // Link Force (Tension)
+        document.getElementById('linkForce').addEventListener('input', (e) => {
+            const v = +e.target.value;
+            document.getElementById('linkForceVal').innerText = v;
+            simulation.force("link").strength(v);
+            simulation.alpha(1).restart();
+        });
+
+        // Link Distance (Length)
+        document.getElementById('linkDistance').addEventListener('input', (e) => {
+            const v = +e.target.value;
+            document.getElementById('linkDistanceVal').innerText = v;
+            linkDistanceBase = v;
+            simulation.force("link").distance(getLinkDistance);
+            simulation.alpha(1).restart();
+        });
+
+        // Drag
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // Tick
+        simulation.on("tick", () => {
+            const now = Date.now();
+            
+            g.select(".links").selectAll(".link")
+                .attr("x1", d => {
+                    if (d.source.vibrationStart) {
+                        const elapsed = now - d.source.vibrationStart;
+                        return d.source.x + (Math.random() - 0.5) * Math.min(elapsed * 0.02, 5);
+                    }
+                    return d.source.x;
+                })
+                .attr("y1", d => {
+                    if (d.source.vibrationStart) {
+                        const elapsed = now - d.source.vibrationStart;
+                        return d.source.y + (Math.random() - 0.5) * Math.min(elapsed * 0.02, 5);
+                    }
+                    return d.source.y;
+                })
+                .attr("x2", d => {
+                    if (d.target.vibrationStart) {
+                        const elapsed = now - d.target.vibrationStart;
+                        return d.target.x + (Math.random() - 0.5) * Math.min(elapsed * 0.02, 5);
+                    }
+                    return d.target.x;
+                })
+                .attr("y2", d => {
+                    if (d.target.vibrationStart) {
+                        const elapsed = now - d.target.vibrationStart;
+                        return d.target.y + (Math.random() - 0.5) * Math.min(elapsed * 0.02, 5);
+                    }
+                    return d.target.y;
+                });
+
+            g.select(".nodes").selectAll(".node")
+                .attr("transform", d => {
+                    let dx = 0, dy = 0;
+                    if (d.vibrationStart) {
+                        const elapsed = now - d.vibrationStart;
+                        // Ramping intensity: starts at 0, caps at 5px jitter
+                        const intensity = Math.min(elapsed * 0.02, 5); 
+                        dx = (Math.random() - 0.5) * intensity;
+                        dy = (Math.random() - 0.5) * intensity;
+                    }
+                    return `translate(${d.x + dx},${d.y + dy})`;
+                });
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            svg.attr("width", width).attr("height", height);
+            simulation.force("center", d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(1).restart();
+        });
+
+        // Groups
+        g.append("g").attr("class", "links");
+        g.append("g").attr("class", "nodes");
+
+        // Init
+        (function init() {
+            document.getElementById('startPhrase').value = INITIAL_RIP;
+            addNode(INITIAL_RIP, 'rip', width/2, height/2);
+            updateGraph();
+        })();
+
+    </script>
+</body>
+</html>
