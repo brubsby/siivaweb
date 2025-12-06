@@ -358,8 +358,15 @@
         let youtubeFrame = null;
         let currentYoutubeVideoId = null; // Track current video in YouTube frame
         let currentWikiTitle = null; // Track current wiki page title
+        let showPageAbortController = null;
 
         async function showPage(node) {
+            if (showPageAbortController) {
+                showPageAbortController.abort();
+            }
+            showPageAbortController = new AbortController();
+            const signal = showPageAbortController.signal;
+
             const title = node.id;
             const displayTitle = title.replace(/^Category:/, '');
 
@@ -403,7 +410,9 @@
                         format: 'json',
                         prop: 'text',
                         mobileformat: 1
-                    });
+                    }, signal);
+
+                    if (signal.aborted) return;
 
                     if (parseData.parse && parseData.parse.text && wikiInner) {
                         let content = parseData.parse.text['*'];
@@ -454,6 +463,7 @@
                         wikiInner.srcdoc = html;
                     }
                 } catch (e) {
+                    if (e.name === 'AbortError') return;
                     if(wikiInner) wikiInner.srcdoc = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content.</div>`;
                 }
             }
@@ -469,7 +479,9 @@
                         rvprop: 'content',
                         format: 'json',
                         rvslots: 'main'
-                    });
+                    }, signal);
+
+                    if (signal.aborted) return;
 
                     const pages = rawData.query.pages;
                     const pageId = Object.keys(pages)[0];
@@ -517,7 +529,7 @@
                         }
                     }
                 } catch (e) {
-                    console.error("Error finding video:", e);
+                    if (e.name !== 'AbortError') console.error("Error finding video:", e);
                 }
             }
         }
