@@ -395,121 +395,25 @@
 
                                 });
 
-                                                                                            wikiFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
+                                                                                                                wikiFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
 
-                                                                                            wikiFrame.show();
+                                                                                                                
 
-                                                                                            
+                                                                                                                wikiFrame.on('closeButton', 'click', (_frame) => {
 
-                                                                                                                                                        setTimeout(() => {
+                                                                                                                    _frame.closeFrame();
 
-                                                                                            
+                                                                                                                    wikiFrame = null; 
 
-                                                                                                                                                            const inner = document.getElementById('wikiInnerFrame');
+                                                                                                                    currentWikiTitle = null; 
 
-                                                                                            
+                                                                                                                    updateSelectionVisuals();
 
-                                                                                                                                                            if (inner) {
-
-                                                                                            
-
-                                                                                                                                                                let win = inner.parentElement;
+                                                                                                                });
 
                                                                                             
 
-                                                                                                                                                                // Traverse up to find ID starting with 'window_'
-
-                                                                                            
-
-                                                                                                                                                                while (win && (!win.id || !win.id.startsWith('window_'))) {
-
-                                                                                            
-
-                                                                                                                                                                    win = win.parentElement;
-
-                                                                                            
-
-                                                                                                                                                                }
-
-                                                                                            
-
-                                                                                                                                                                
-
-                                                                                            
-
-                                                                                                                                                                if (win) {
-
-                                                                                            
-
-                                                                                                                                                                    console.log("Found Window by ID:", win.id);
-
-                                                                                            
-
-                                                                                                                                                                    // Attach listener to window to catch titlebar clicks
-
-                                                                                            
-
-                                                                                                                                                                    win.addEventListener('mousedown', (e) => {
-
-                                                                                            
-
-                                                                                                                                                                        console.log("Window Clicked Target:", e.target.tagName, e.target.className, e.target.id);
-
-                                                                                            
-
-                                                                                                                                                                        // Check if it looks like a close button (e.g. no text, specific size)
-
-                                                                                            
-
-                                                                                                                                                                        // Or checking if the frame closes shortly after?
-
-                                                                                            
-
-                                                                                                                                                                        setTimeout(() => {
-
-                                                                                            
-
-                                                                                                                                                                            if (!document.getElementById('wikiInnerFrame')) {
-
-                                                                                            
-
-                                                                                                                                                                                console.log("Wiki Closed (Detected via Window Click)");
-
-                                                                                            
-
-                                                                                                                                                                                wikiFrame = null; 
-
-                                                                                            
-
-                                                                                                                                                                                currentWikiTitle = null; 
-
-                                                                                            
-
-                                                                                                                                                                                updateSelectionVisuals();
-
-                                                                                            
-
-                                                                                                                                                                            }
-
-                                                                                            
-
-                                                                                                                                                                        }, 200);
-
-                                                                                            
-
-                                                                                                                                                                    }, true); // Capture
-
-                                                                                            
-
-                                                                                                                                                                }
-
-                                                                                            
-
-                                                                                                                                                            }
-
-                                                                                            
-
-                                                                                                                                                        }, 500);
+                                                                                                                wikiFrame.show();
 
                                 needsWikiUpdate = true;
 
@@ -739,35 +643,17 @@
                                 html: '<div id="ytPlayer"></div>'
                             });
                             youtubeFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
-                            youtubeFrame.show();
                             
-                            setTimeout(() => {
-                                const inner = document.getElementById('ytPlayer');
-                                if (inner) {
-                                    let win = inner.parentElement;
-                                    while (win && (!win.id || !win.id.startsWith('window_'))) {
-                                        win = win.parentElement;
-                                    }
-                                    
-                                    if (win) {
-                                        win.addEventListener('mousedown', (e) => {
-                                            setTimeout(() => {
-                                                if (!document.getElementById('ytPlayer')) {
-                                                    console.log("YouTube Closed (Detected via Window Click)");
-                                                    youtubeFrame = null; 
-                                                    if (ytPlayer) {
-                                                        ytPlayer.destroy();
-                                                        ytPlayer = null;
-                                                    }
-                                                    currentYoutubeVideoId = null;
-                                                    currentYoutubeNodeId = null;
-                                                    updateSelectionVisuals();
-                                                }
-                                            }, 200);
-                                        }, true);
-                                    }
-                                }
-                            }, 100);
+                            youtubeFrame.on('closeButton', 'click', (_frame) => {
+                                _frame.closeFrame();
+                                youtubeFrame = null; 
+                                if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+                                currentYoutubeVideoId = null;
+                                currentYoutubeNodeId = null;
+                                updateSelectionVisuals();
+                            });
+                            
+                            youtubeFrame.show();
                             
                             if (window.YT && window.YT.Player) {
                                 ytPlayer = new YT.Player('ytPlayer', {
