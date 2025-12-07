@@ -267,6 +267,34 @@
 
 
         app.ticker.add((delta) => {
+            // Camera Tracking
+            if (trackingNode) {
+                const now = Date.now();
+                const elapsed = now - trackingStartTime;
+                let p = elapsed / TRACKING_DURATION;
+                
+                if (p >= 1) p = 1;
+                
+                const easedP = d3.easeCubicOut(p);
+                const opt = calculateOptimalCenter();
+                const startT = trackingStartTransform;
+                const scale = startT.k; 
+                
+                // Target Translation based on CURRENT node position
+                const targetTx = opt.x - trackingNode.x * scale;
+                const targetTy = opt.y - trackingNode.y * scale;
+                
+                // Interpolate
+                const currentTx = startT.x + (targetTx - startT.x) * easedP;
+                const currentTy = startT.y + (targetTy - startT.y) * easedP;
+                
+                zoom.transform(d3.select(app.view), new d3.ZoomTransform(scale, currentTx, currentTy));
+
+                if (p >= 1) {
+                    trackingNode = null;
+                }
+            }
+
             // Run Physics
             simulation.tick(); 
             const now = Date.now();
@@ -812,6 +840,9 @@
         const zoom = d3.zoom()
             .scaleExtent([0.1, 8])
             .on("zoom", (event) => {
+                if (event.sourceEvent) {
+                    trackingNode = null; // Cancel auto-tracking on user input
+                }
                 viewport.scale.set(event.transform.k);
                 viewport.position.set(event.transform.x, event.transform.y);
             });
@@ -1296,6 +1327,7 @@
                         // Node exists: Remove placeholder and activate existing
                         nodes = nodes.filter(n => n.id !== tempId);
                         restartSimulation();
+                        focusOnNode(existingNode);
                         showPage(existingNode);
                         expandNode(existingNode);
                         return;
@@ -1306,6 +1338,7 @@
                     finalNode = placeholderNode;
                     
                     restartSimulation();
+                    focusOnNode(finalNode);
                     showPage(finalNode);
                     expandNode(finalNode);
                 } else {
@@ -1495,11 +1528,111 @@
             }
         }
 
+        // --- Smart Camera Logic ---
+        function getFrameRect(innerId) {
+            const el = document.getElementById(innerId);
+            if (el) {
+                let p = el.parentElement;
+                while (p && p !== document.body) {
+                    if (p.id && p.id.startsWith('window_')) return p.getBoundingClientRect();
+                    p = p.parentElement;
+                }
+                return el.getBoundingClientRect();
+            }
+            return null;
+        }
+
+        function calculateOptimalCenter() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const gridW = 20;
+            const gridH = 15;
+            const cellW = width / gridW;
+            const cellH = height / gridH;
+
+            const wikiRect = getFrameRect('wikiInnerFrame');
+            const ytRect = getFrameRect('ytPlayer');
+
+            let bestScore = -Infinity;
+            let bestX = width / 2;
+            let bestY = height / 2;
+
+            for (let x = 0; x < gridW; x++) {
+                for (let y = 0; y < gridH; y++) {
+                    const cx = (x + 0.5) * cellW;
+                    const cy = (y + 0.5) * cellH;
+
+                    // Base score: Prefer center
+                    const dx = cx - width/2;
+                    const dy = cy - height/2;
+                    const distCenter = Math.sqrt(dx*dx + dy*dy);
+                    let score = 1000 - distCenter; 
+
+                    // Window Avoidance
+                    if (wikiRect) {
+                        // Max of 0 ensures we don't get negative distance if inside (which handles overlap)
+                        // If inside, max is 0. 
+                        // Wait, signed distance is better.
+                        // If cx is between left/right, dx is 0.
+                        let insideX = cx >= wikiRect.left && cx <= wikiRect.right;
+                        let insideY = cy >= wikiRect.top && cy <= wikiRect.bottom;
+                        
+                        if (insideX && insideY) {
+                            score = -100000; // Blocked
+                        } else {
+                            // Euclidean distance to nearest edge
+                            const d_x = Math.max(wikiRect.left - cx, cx - wikiRect.right, 0);
+                            const d_y = Math.max(wikiRect.top - cy, cy - wikiRect.bottom, 0);
+                            const dist = Math.sqrt(d_x*d_x + d_y*d_y);
+                            score -= (20000 / (dist + 50)); // Heavy penalty for proximity
+                        }
+                    }
+                    if (ytRect) {
+                        let insideX = cx >= ytRect.left && cx <= ytRect.right;
+                        let insideY = cy >= ytRect.top && cy <= ytRect.bottom;
+                        if (insideX && insideY) {
+                            score = -100000; 
+                        } else {
+                            const d_x = Math.max(ytRect.left - cx, cx - ytRect.right, 0);
+                            const d_y = Math.max(ytRect.top - cy, cy - ytRect.bottom, 0);
+                            const dist = Math.sqrt(d_x*d_x + d_y*d_y);
+                            score -= (20000 / (dist + 50));
+                        }
+                    }
+                    
+                    // Edge penalty
+                    const edgeDist = Math.min(cx, width-cx, cy, height-cy);
+                    if (edgeDist < 80) score -= 2000;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestX = cx;
+                        bestY = cy;
+                    }
+                }
+            }
+            return { x: bestX, y: bestY };
+        }
+
+        let trackingNode = null;
+        let trackingStartTransform = null;
+        let trackingStartTime = 0;
+        const TRACKING_DURATION = 2000;
+
+        function focusOnNode(node) {
+            trackingNode = node;
+            trackingStartTime = Date.now();
+            trackingStartTransform = d3.zoomTransform(app.view);
+            // Stop any active D3 transitions on the view to prevent conflicts
+            d3.select(app.view).interrupt();
+        }
+
         function playNextRandomRip() {
             const unvisitedRips = nodes.filter(n => !n.visited && n.type === 'rip');
             if (unvisitedRips.length > 0) {
                 const randomIndex = Math.floor(Math.random() * unvisitedRips.length);
                 const node = unvisitedRips[randomIndex];
+                focusOnNode(node);
                 showPage(node);
                 expandNode(node);
             } else {
@@ -1513,6 +1646,7 @@
             if (unvisitedCats.length > 0) {
                 const randomIndex = Math.floor(Math.random() * unvisitedCats.length);
                 const node = unvisitedCats[randomIndex];
+                focusOnNode(node);
                 showPage(node);
                 expandNode(node);
             } else {
