@@ -500,7 +500,8 @@
                                         'origin': window.location.origin
                                     },
                                     events: {
-                                        'onStateChange': onPlayerStateChange
+                                        'onStateChange': onPlayerStateChange,
+                                        'onError': onPlayerError
                                     }
                                 });
                             }
@@ -514,9 +515,17 @@
                                 currentYoutubeVideoId = videoId;
                             }
                         }
+                    } else if (document.getElementById('autoplayUnvisitedCheck').checked) {
+                        // No video ID found, skip to next if autoplay is on
+                        console.log("No video ID found, skipping...");
+                        setTimeout(playNextRandomRip, 2000);
                     }
                 } catch (e) {
                     if (e.name !== 'AbortError') console.error("Error finding video:", e);
+                    // Also skip on error if autoplay is on?
+                    if (document.getElementById('autoplayUnvisitedCheck').checked) {
+                         setTimeout(playNextRandomRip, 2000);
+                    }
                 }
             } else if (youtubeFrame && !showYoutube) {
                 youtubeFrame.close();
@@ -1094,10 +1103,16 @@
                         <button id="addCatBtn" style="white-space: nowrap;">Add Cat</button>
                     </div>
                     <div class="input-group">
-                        <button id="randomBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Rip Node</button>
+                        <button id="randomBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Rip</button>
                     </div>
                     <div class="input-group">
-                        <button id="randomCatBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Category Node</button>
+                        <button id="randomCatBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Category</button>
+                    </div>
+                    <div class="input-group">
+                        <button id="selectRandomUnvisitedBtn" style="width: 100%; background: #69b3a2; white-space: nowrap;">Select Random Unvisited Rip</button>
+                    </div>
+                    <div class="input-group">
+                        <button id="selectRandomUnvisitedCatBtn" style="width: 100%; background: #69b3a2; white-space: nowrap;">Select Random Unvisited Category</button>
                     </div>
                     
                     <div class="control-group" style="margin-top: 10px; gap: 8px;">
@@ -1162,6 +1177,8 @@
 
             document.getElementById('randomBtn').addEventListener('click', (e) => handleRandomNode(e, 0, 'rip'));
             document.getElementById('randomCatBtn').addEventListener('click', (e) => handleRandomNode(e, 14, 'category'));
+            document.getElementById('selectRandomUnvisitedBtn').addEventListener('click', playNextRandomRip);
+            document.getElementById('selectRandomUnvisitedCatBtn').addEventListener('click', playNextRandomCategory);
 
             document.getElementById('centerForce').addEventListener('input', (e) => {
                 const v = +e.target.value;
@@ -1207,6 +1224,24 @@
             }
         }
 
+        function onPlayerError(event) {
+            // Error codes: 2 (invalid param), 5 (HTML5 error), 100 (not found/private), 101/150 (embed not allowed)
+            let errorMsg = "Unknown Error";
+            switch(event.data) {
+                case 2: errorMsg = "Invalid Parameter (2)"; break;
+                case 5: errorMsg = "HTML5 Player Error (5)"; break;
+                case 100: errorMsg = "Video Not Found / Private (100)"; break;
+                case 101: 
+                case 150: errorMsg = "Embedding Not Allowed (101/150)"; break;
+            }
+            console.warn(`YouTube Player Error: ${errorMsg}`);
+            
+            if (document.getElementById('autoplayUnvisitedCheck').checked) {
+                console.log("Skipping unavailable video...");
+                setTimeout(playNextRandomRip, 2000); // Short delay before skipping
+            }
+        }
+
         function playNextRandomRip() {
             const unvisitedRips = nodes.filter(n => !n.visited && n.type === 'rip');
             if (unvisitedRips.length > 0) {
@@ -1217,6 +1252,18 @@
             } else {
                 console.log("No unvisited rips left. Stopping autoplay.");
                 document.getElementById('autoplayUnvisitedCheck').checked = false;
+            }
+        }
+
+        function playNextRandomCategory() {
+            const unvisitedCats = nodes.filter(n => !n.visited && n.type === 'category');
+            if (unvisitedCats.length > 0) {
+                const randomIndex = Math.floor(Math.random() * unvisitedCats.length);
+                const node = unvisitedCats[randomIndex];
+                showPage(node);
+                expandNode(node);
+            } else {
+                console.log("No unvisited categories left.");
             }
         }
 
