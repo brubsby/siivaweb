@@ -79,9 +79,7 @@
         .input-group {
             display: flex;
             gap: 5px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #555;
-            padding-bottom: 10px;
+            margin-bottom: 8px;
         }
         .input-group input[type="text"] {
             background: #333;
@@ -999,14 +997,14 @@
 
 
 
-        async function handleRandomNode(e) {
+        async function handleRandomNode(e, namespace = 0, type = 'rip') {
             try {
                 // Fetch random rip data first
                 const data = await fetchApi({
                     action: 'query',
                     format: 'json',
                     list: 'random',
-                    rnnamespace: 0, // Main namespace only (Rips)
+                    rnnamespace: namespace,
                     rnlimit: 1
                 }, globalAbortController.signal);
                 
@@ -1035,7 +1033,7 @@
                     const dist = Math.sqrt(dx*dx + dy*dy) || 1;
                     const speed = 15; // Initial burst speed
                     
-                    const placeholderNode = addNode(tempId, 'rip', startX, startY);
+                    const placeholderNode = addNode(tempId, type, startX, startY);
                     placeholderNode.vx = (dx / dist) * speed;
                     placeholderNode.vy = (dy / dist) * speed;
                     placeholderNode.vibrationStart = Date.now(); // Start vibrating
@@ -1091,6 +1089,9 @@
                     </div>
                     <div class="input-group">
                         <button id="randomBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Rip Node</button>
+                    </div>
+                    <div class="input-group">
+                        <button id="randomCatBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Category Node</button>
                     </div>
                     
                     <div class="control-group" style="margin-top: 10px; gap: 8px;">
@@ -1153,7 +1154,8 @@
                 if (e.key === 'Enter') handleAddNode(e.target.value, true, e);
             });
 
-            document.getElementById('randomBtn').addEventListener('click', handleRandomNode);
+            document.getElementById('randomBtn').addEventListener('click', (e) => handleRandomNode(e, 0, 'rip'));
+            document.getElementById('randomCatBtn').addEventListener('click', (e) => handleRandomNode(e, 14, 'category'));
 
             document.getElementById('centerForce').addEventListener('input', (e) => {
                 const v = +e.target.value;
