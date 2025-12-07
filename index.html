@@ -197,18 +197,44 @@
         viewport.addChild(nodeContainer);
 
         // Textures (Generated once for performance)
+        const TEXTURE_RES_MULT = 4;
+
         function createCircleTexture(color, radius) {
             const gr = new PIXI.Graphics();
             gr.beginFill(color);
-            gr.lineStyle(1.5, 0xffffff);
-            gr.drawCircle(0, 0, radius);
+            gr.lineStyle(1.5 * TEXTURE_RES_MULT, 0xffffff);
+            gr.drawCircle(0, 0, radius * TEXTURE_RES_MULT);
+            gr.endFill();
+            return app.renderer.generateTexture(gr);
+        }
+
+        function createMassiveTexture(radius) {
+            const gr = new PIXI.Graphics();
+            gr.beginFill(0x000000);
+            gr.lineStyle(2 * TEXTURE_RES_MULT, 0xffffff);
+            gr.drawCircle(0, 0, radius * TEXTURE_RES_MULT);
             gr.endFill();
             return app.renderer.generateTexture(gr);
         }
         
         const ripTexture = createCircleTexture(0x4a90e2, NODE_RADIUS);
         const catTexture = createCircleTexture(0xff9f43, NODE_RADIUS);
-        const ripTextureVibrate = createCircleTexture(0x4a90e2, NODE_RADIUS + 1); // Slight larger for effect
+        const massiveCatTexture = createMassiveTexture(NODE_RADIUS);
+
+        const MASSIVE_CATEGORIES = new Set([
+            "Category:Rips",
+            "Category:Mashups",
+            "Category:Renamed rips",
+            "Category:Melody changes",
+            "Category:Rips with sentence mixing",
+            "Category:Arrangements",
+            "Category:Rips with pitch-shifting",
+            "Category:Anonymous contributions",
+            "Category:Original remixes"
+        ]);
+        
+        // Vibrate textures not strictly needed with scale animation, but keeping for compatibility if referenced
+        const ripTextureVibrate = createCircleTexture(0x4a90e2, NODE_RADIUS + 1); 
         const catTextureVibrate = createCircleTexture(0xff9f43, NODE_RADIUS + 1);
 
         // Map to keep track of sprites {nodeId: Sprite}
@@ -235,17 +261,7 @@
             return dist;
         }
 
-        // --- Render Loop ---
-        app.ticker.add(() => {
-            const now = Date.now();
 
-            // 1. Update Node Sprites positions
-            simulation.tick(); // Manually tick D3? Or let D3 internal timer run?
-            // Actually D3 has its own timer. If we use simulation.on("tick"), it runs independently.
-            // But syncing with Pixi ticker is smoother. We'll disable D3 internal timer and call tick manually here.
-        });
-        
-        simulation.stop(); // Stop internal timer, we drive it with Pixi
 
         app.ticker.add((delta) => {
             // Run Physics
@@ -287,6 +303,15 @@
 
                 let dx = 0, dy = 0;
                 
+                // Logarithmic size: 1 conn = 1x
+                // Categories: 500 conn = ~3x, Rips: 500 conn = ~2x
+                const degree = n.degree || 0;
+                const factor = n.type === 'category' ? 0.322 : 0.161;
+                const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
+                
+                // Adjust for high-res texture
+                const finalScale = baseScale / TEXTURE_RES_MULT;
+
                 // Vibration Logic & Visuals
                 if (n.vibrationStart) {
                     const elapsed = now - n.vibrationStart;
@@ -296,12 +321,22 @@
                     
                     // Change texture/tint for loading effect
                     sprite.tint = 0xffcc00;
-                    sprite.scale.set(1.1);
+                    sprite.scale.set(finalScale * 1.1);
+                    sprite.alpha = 1.0;
+                } else if (n.headShakeStart) {
+                    const elapsed = now - n.headShakeStart;
+                    if (elapsed < 500) {
+                        dx = Math.sin(elapsed * 0.05) * 3; // Shake
+                    } else {
+                        n.headShakeStart = null;
+                    }
+                    sprite.tint = n.visited ? 0xffffff : 0x999999;
+                    sprite.scale.set(finalScale);
                     sprite.alpha = 1.0;
                 } else {
-                    sprite.tint = 0xffffff;
-                    sprite.scale.set(1.0);
-                    sprite.alpha = n.visited ? 1.0 : 0.5;
+                    sprite.tint = n.visited ? 0xffffff : 0x999999;
+                    sprite.scale.set(finalScale);
+                    sprite.alpha = 1.0;
                 }
 
                 sprite.x = n.x + dx;
@@ -547,7 +582,9 @@
             // Add sprites for new nodes
             nodes.forEach(n => {
                 if (!nodeSprites.has(n.id)) {
-                    const tex = n.type === 'category' ? catTexture : ripTexture;
+                    let tex = n.type === 'category' ? catTexture : ripTexture;
+                    if (n.isMassive) tex = massiveCatTexture;
+
                     const sprite = new PIXI.Sprite(tex);
                     sprite.anchor.set(0.5);
                     sprite.eventMode = 'static'; // Interactive
@@ -567,6 +604,12 @@
                             dragState.didMove = false; // Reset for next interaction
                             return;
                         }
+
+                        if (n.isMassive) {
+                            n.headShakeStart = Date.now();
+                            return;
+                        }
+
                         showPage(n);
                         expandNode(n);
                     });
@@ -735,8 +778,10 @@
         function addNode(id, type, x, y) {
             let existing = nodes.find(n => n.id === id);
             if (existing) return existing;
+            const isMassive = MASSIVE_CATEGORIES.has(id);
             const newNode = { 
-                id: id, type: type, x: x || 0, y: y || 0, degree: 0, visited: false
+                id: id, type: type, x: x || 0, y: y || 0, degree: 0, visited: false,
+                isMassive: isMassive
             };
             nodes.push(newNode);
             return newNode;
