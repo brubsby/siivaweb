@@ -36,20 +36,15 @@
             width: 100vw;
             height: 100vh;
         }
-        .controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(30, 30, 30, 0.9);
+        .controls-content {
             padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            z-index: 100;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            max-width: 300px;
+            background: #1e1e1e;
+            color: #ccc;
+            height: 100%;
+            overflow-y: auto;
         }
         .control-group {
             display: flex;
@@ -135,61 +130,6 @@
 <body>
     <div id="tooltip"></div>
 
-    <div class="controls">
-        <div class="help-text">
-            <strong>Left-click</strong> node to fetch connections.<br>
-            <strong>Right-click</strong> node to prune.<br>
-            <strong>Drag</strong> background to pan, wheel to zoom.<br>
-            <strong>Esc</strong> to cancel expansion.<br>
-            <span id="nodeCount" style="color: #fff;">Nodes: 0</span>
-        </div>
-        
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #4a90e2;"></div>
-                <span>Rip (Page)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #ff9f43;"></div>
-                <span>Category</span>
-            </div>
-        </div>
-
-        <div class="input-group">
-            <input type="text" id="pageInput" placeholder="Rip Title (e.g. Athletic Theme)" value="">
-            <button id="addPageBtn">Add Rip</button>
-        </div>
-        <div class="input-group">
-            <input type="text" id="catInput" placeholder="Category (e.g. Rips featuring Mario)" value="">
-            <button id="addCatBtn">Add Cat</button>
-        </div>
-        <div class="input-group">
-            <button id="randomBtn" style="width: 100%; background: #ff9f43;">Random Rip</button>
-        </div>
-        
-        <div class="control-group">
-            <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
-            <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.05">
-        </div>
-        <div class="control-group">
-            <label for="repelForce">Repel Force: <span id="repelForceVal">100</span></label>
-            <input type="range" id="repelForce" min="0" max="1000" value="100">
-        </div>
-        <div class="control-group">
-            <label for="linkForce">Link Force: <span id="linkForceVal">0.05</span></label>
-            <input type="range" id="linkForce" min="0" max="1" step="0.05" value="0.05">
-        </div>
-        <div class="control-group">
-            <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
-            <input type="range" id="linkDistance" min="10" max="300" value="25">
-        </div>
-        <div class="control-group" style="flex-direction: row; gap: 10px;">
-            <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki</label>
-            <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube</label>
-            <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="autoplayUnvisitedCheck"> Autoplay Random Unvisited Node</label>
-        </div>
-    </div>
-
     <script>
         // Load YouTube IFrame API
         var tag = document.createElement('script');
@@ -209,6 +149,7 @@
         let tooltip = document.getElementById('tooltip');
         let abortExpansion = false;
         let globalAbortController = new AbortController();
+        let controlsFrame = null;
 
         function wait(ms, signal) {
             return new Promise((resolve, reject) => {
@@ -1049,21 +990,7 @@
             }
         }
 
-        document.getElementById('addPageBtn').addEventListener('click', (e) => {
-            handleAddNode(document.getElementById('pageInput').value, false, e);
-        });
-        
-        document.getElementById('addCatBtn').addEventListener('click', (e) => {
-            handleAddNode(document.getElementById('catInput').value, true, e);
-        });
 
-        // Enter key support
-        document.getElementById('pageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleAddNode(e.target.value, false, e);
-        });
-        document.getElementById('catInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleAddNode(e.target.value, true, e);
-        });
 
         async function handleRandomNode(e) {
             try {
@@ -1125,34 +1052,124 @@
             }
         }
 
-        document.getElementById('randomBtn').addEventListener('click', handleRandomNode);
+        function initControls() {
+            const controlsHtml = `
+                <div class="controls-content">
+                    <div class="help-text">
+                        <strong>Left-click</strong> node to fetch connections.<br>
+                        <strong>Right-click</strong> node to prune.<br>
+                        <strong>Drag</strong> background to pan, wheel to zoom.<br>
+                        <strong>Esc</strong> to cancel expansion.<br>
+                        <span id="nodeCount" style="color: #fff;">Nodes: 0</span>
+                    </div>
+                    
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #4a90e2;"></div>
+                            <span>Rip (Page)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff9f43;"></div>
+                            <span>Category</span>
+                        </div>
+                    </div>
 
-        document.getElementById('centerForce').addEventListener('input', (e) => {
-            const v = +e.target.value;
-            document.getElementById('centerForceVal').innerText = v;
-            simulation.force("x").strength(v);
-            simulation.force("y").strength(v);
-            simulation.alpha(1).restart();
-        });
-        document.getElementById('repelForce').addEventListener('input', (e) => {
-            const v = +e.target.value;
-            document.getElementById('repelForceVal').innerText = v;
-            simulation.force("charge").strength(-v);
-            simulation.alpha(1).restart();
-        });
-        document.getElementById('linkForce').addEventListener('input', (e) => {
-            const v = +e.target.value;
-            document.getElementById('linkForceVal').innerText = v;
-            simulation.force("link").strength(v);
-            simulation.alpha(1).restart();
-        });
-        document.getElementById('linkDistance').addEventListener('input', (e) => {
-            const v = +e.target.value;
-            document.getElementById('linkDistanceVal').innerText = v;
-            linkDistanceBase = v;
-            simulation.force("link").distance(getLinkDistance);
-            simulation.alpha(1).restart();
-        });
+                    <div class="input-group">
+                        <input type="text" id="pageInput" placeholder="Rip Title" value="">
+                        <button id="addPageBtn">Add Rip</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="catInput" placeholder="Category" value="">
+                        <button id="addCatBtn">Add Cat</button>
+                    </div>
+                    <div class="input-group">
+                        <button id="randomBtn" style="width: 100%; background: #ff9f43;">Random Rip</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
+                        <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.05">
+                    </div>
+                    <div class="control-group">
+                        <label for="repelForce">Repel Force: <span id="repelForceVal">100</span></label>
+                        <input type="range" id="repelForce" min="0" max="1000" value="100">
+                    </div>
+                    <div class="control-group">
+                        <label for="linkForce">Link Force: <span id="linkForceVal">0.05</span></label>
+                        <input type="range" id="linkForce" min="0" max="1" step="0.05" value="0.05">
+                    </div>
+                    <div class="control-group">
+                        <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
+                        <input type="range" id="linkDistance" min="10" max="300" value="25">
+                    </div>
+                    <div class="control-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
+                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki</label>
+                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube</label>
+                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="autoplayUnvisitedCheck"> Autoplay Random Unvisited Node</label>
+                    </div>
+                </div>
+            `;
+
+            controlsFrame = jsFrame.create({
+                title: 'Controls',
+                left: window.innerWidth - 320, top: 20, width: 300, height: 600,
+                movable: true, resizable: true,
+                html: controlsHtml
+            });
+            controlsFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
+            controlsFrame.show();
+
+            // Attach Listeners
+            document.getElementById('addPageBtn').addEventListener('click', (e) => {
+                handleAddNode(document.getElementById('pageInput').value, false, e);
+            });
+            
+            document.getElementById('addCatBtn').addEventListener('click', (e) => {
+                handleAddNode(document.getElementById('catInput').value, true, e);
+            });
+
+            document.getElementById('pageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleAddNode(e.target.value, false, e);
+            });
+            document.getElementById('catInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleAddNode(e.target.value, true, e);
+            });
+
+            document.getElementById('randomBtn').addEventListener('click', handleRandomNode);
+
+            document.getElementById('centerForce').addEventListener('input', (e) => {
+                const v = +e.target.value;
+                document.getElementById('centerForceVal').innerText = v;
+                simulation.force("x").strength(v);
+                simulation.force("y").strength(v);
+                simulation.alpha(1).restart();
+            });
+            document.getElementById('repelForce').addEventListener('input', (e) => {
+                const v = +e.target.value;
+                document.getElementById('repelForceVal').innerText = v;
+                simulation.force("charge").strength(-v);
+                simulation.alpha(1).restart();
+            });
+            document.getElementById('linkForce').addEventListener('input', (e) => {
+                const v = +e.target.value;
+                document.getElementById('linkForceVal').innerText = v;
+                simulation.force("link").strength(v);
+                simulation.alpha(1).restart();
+            });
+            document.getElementById('linkDistance').addEventListener('input', (e) => {
+                const v = +e.target.value;
+                document.getElementById('linkDistanceVal').innerText = v;
+                linkDistanceBase = v;
+                simulation.force("link").distance(getLinkDistance);
+                simulation.alpha(1).restart();
+            });
+
+            document.getElementById('autoplayUnvisitedCheck').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    playNextRandomRip();
+                }
+            });
+        }
 
         // YouTube Autoplay Logic
         function onPlayerStateChange(event) {
@@ -1177,14 +1194,16 @@
             }
         }
 
-        document.getElementById('autoplayUnvisitedCheck').addEventListener('change', (e) => {
-            if (e.target.checked) {
-                playNextRandomRip();
-            }
-        });
+
 
         // --- Init ---
         (function init() {
+            initControls();
+            // Wait for controls to be ready? They are synchronous.
+            // But document.getElementById('pageInput') is now inside the frame.
+            // JSFrame might not append to DOM synchronously or might use shadow DOM?
+            // If JSFrame uses a div appended to body, it's synchronous.
+            
             document.getElementById('pageInput').value = INITIAL_RIP;
             addNode(INITIAL_RIP, 'rip', window.innerWidth/2, window.innerHeight/2);
             restartSimulation();
