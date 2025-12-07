@@ -183,6 +183,10 @@
             <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
             <input type="range" id="linkDistance" min="10" max="300" value="25">
         </div>
+        <div class="control-group" style="flex-direction: row; gap: 10px;">
+            <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki</label>
+            <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube</label>
+        </div>
     </div>
 
     <script>
@@ -370,106 +374,114 @@
             const title = node.id;
             const displayTitle = title.replace(/^Category:/, '');
 
+            // Check settings
+            const showWiki = document.getElementById('showWikiCheck').checked;
+            const showYoutube = document.getElementById('showYoutubeCheck').checked;
+
             // --- 1. Wiki Window (JSFrame) ---
-            let needsWikiUpdate = false;
+            if (showWiki) {
+                let needsWikiUpdate = false;
 
-            if (!wikiFrame) {
-                wikiFrame = jsFrame.create({
-                    title: 'Wiki: ' + displayTitle,
-                    left: 20, top: 20, width: 600, height: 800,
-                    movable: true, resizable: true,
-                    html: '<iframe id="wikiInnerFrame" class="jsframe-wiki-content" name="wikiInnerFrame"></iframe>'
-                });
-                wikiFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
-                wikiFrame.on('close', () => { wikiFrame = null; currentWikiTitle = null; });
-                wikiFrame.show();
-                needsWikiUpdate = true;
-            } else {
-                wikiFrame.setTitle('Wiki: ' + displayTitle);
-                wikiFrame.show();
-                wikiFrame.requestFocus();
-                if (currentWikiTitle !== title) {
+                if (!wikiFrame) {
+                    wikiFrame = jsFrame.create({
+                        title: 'Wiki: ' + displayTitle,
+                        left: 20, top: 20, width: 600, height: 800,
+                        movable: true, resizable: true,
+                        html: '<iframe id="wikiInnerFrame" class="jsframe-wiki-content" name="wikiInnerFrame"></iframe>'
+                    });
+                    wikiFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
+                    wikiFrame.on('close', () => { wikiFrame = null; currentWikiTitle = null; });
+                    wikiFrame.show();
                     needsWikiUpdate = true;
-                }
-            }
-
-            if (needsWikiUpdate) {
-                currentWikiTitle = title;
-                
-                // Show loading in Wiki Frame
-                const wikiInner = document.getElementById('wikiInnerFrame'); // JSFrame adds to DOM
-                if (wikiInner) {
-                    wikiInner.srcdoc = `<div style="font-family:sans-serif;padding:20px;color:#ccc;background:#1e1e1e;height:100vh;">Loading ${displayTitle}...</div>`;
-                }
-
-                // Fetch Wiki Content
-                try {
-                    const parseData = await fetchApi({
-                        action: 'parse',
-                        page: title,
-                        format: 'json',
-                        prop: 'text',
-                        mobileformat: 1
-                    }, signal);
-
-                    if (signal.aborted) return;
-
-                    if (parseData.parse && parseData.parse.text && wikiInner) {
-                        let content = parseData.parse.text['*'];
-                        // Fix relative image URLs to be absolute (handling single and double quotes)
-                        content = content.replace(/src=["']\//g, 'src="https://siivagunner.wiki/');
-                        content = content.replace(/srcset=["']\//g, 'srcset="https://siivagunner.wiki/');
-                        content = content.replace(/, \//g, ', https://siivagunner.wiki/');
-                        
-                        // Remove lazy loading which can cause issues in srcdoc/iframes
-                        content = content.replace(/loading="lazy"/g, '');
-                        content = content.replace(/decoding="async"/g, '');
-
-                        const html = `
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta name="referrer" content="no-referrer">
-                                <base href="https://siivagunner.wiki/wiki/" target="_blank">
-                                <style>
-                                    /* Scrollbar Styling */
-                                    ::-webkit-scrollbar { width: 10px; height: 10px; }
-                                    ::-webkit-scrollbar-track { background: #1e1e1e; }
-                                    ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
-                                    ::-webkit-scrollbar-thumb:hover { background: #555; }
-                                    ::-webkit-scrollbar-corner { background: #1e1e1e; }
-
-                                    /* Core Styles */
-                                    body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; }
-                                    img { max-width: 100%; height: auto; }
-                                    a { color: #4a90e2; text-decoration: none; }
-                                    a:hover { text-decoration: underline; }
-                                    h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; }
-                                    .mw-parser-output { max-width: 100%; }
-                                    
-                                    /* Aggressive Table/Infobox Styling */
-                                    table, .infobox { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; }
-                                    th { background-color: #333 !important; color: #eee !important; border-color: #444 !important; }
-                                    td { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; }
-                                    caption { color: #eee !important; }
-                                </style>
-                            </head>
-                            <body>
-                                <h2>${displayTitle}</h2>
-                                ${content}
-                            </body>
-                            </html>
-                        `;
-                        wikiInner.srcdoc = html;
+                } else {
+                    wikiFrame.setTitle('Wiki: ' + displayTitle);
+                    wikiFrame.show();
+                    wikiFrame.requestFocus();
+                    if (currentWikiTitle !== title) {
+                        needsWikiUpdate = true;
                     }
-                } catch (e) {
-                    if (e.name === 'AbortError') return;
-                    if(wikiInner) wikiInner.srcdoc = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content.</div>`;
                 }
+
+                if (needsWikiUpdate) {
+                    currentWikiTitle = title;
+                    
+                    // Show loading in Wiki Frame
+                    const wikiInner = document.getElementById('wikiInnerFrame'); // JSFrame adds to DOM
+                    if (wikiInner) {
+                        wikiInner.srcdoc = `<div style="font-family:sans-serif;padding:20px;color:#ccc;background:#1e1e1e;height:100vh;">Loading ${displayTitle}...</div>`;
+                    }
+
+                    // Fetch Wiki Content
+                    try {
+                        const parseData = await fetchApi({
+                            action: 'parse',
+                            page: title,
+                            format: 'json',
+                            prop: 'text',
+                            mobileformat: 1
+                        }, signal);
+
+                        if (signal.aborted) return;
+
+                        if (parseData.parse && parseData.parse.text && wikiInner) {
+                            let content = parseData.parse.text['*'];
+                            // Fix relative image URLs to be absolute (handling single and double quotes)
+                            content = content.replace(/src=["']\//g, 'src="https://siivagunner.wiki/');
+                            content = content.replace(/srcset=["']\//g, 'srcset="https://siivagunner.wiki/');
+                            content = content.replace(/, \//g, ', https://siivagunner.wiki/');
+                            
+                            // Remove lazy loading which can cause issues in srcdoc/iframes
+                            content = content.replace(/loading="lazy"/g, '');
+                            content = content.replace(/decoding="async"/g, '');
+
+                            const html = `
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta name="referrer" content="no-referrer">
+                                    <base href="https://siivagunner.wiki/wiki/" target="_blank">
+                                    <style>
+                                        /* Scrollbar Styling */
+                                        ::-webkit-scrollbar { width: 10px; height: 10px; }
+                                        ::-webkit-scrollbar-track { background: #1e1e1e; }
+                                        ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+                                        ::-webkit-scrollbar-thumb:hover { background: #555; }
+                                        ::-webkit-scrollbar-corner { background: #1e1e1e; }
+
+                                        /* Core Styles */
+                                        body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; }
+                                        img { max-width: 100%; height: auto; }
+                                        a { color: #4a90e2; text-decoration: none; }
+                                        a:hover { text-decoration: underline; }
+                                        h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; }
+                                        .mw-parser-output { max-width: 100%; }
+                                        
+                                        /* Aggressive Table/Infobox Styling */
+                                        table, .infobox { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; }
+                                        th { background-color: #333 !important; color: #eee !important; border-color: #444 !important; }
+                                        td { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; }
+                                        caption { color: #eee !important; }
+                                    </style>
+                                </head>
+                                <body>
+                                    <h2>${displayTitle}</h2>
+                                    ${content}
+                                </body>
+                                </html>
+                            `;
+                            wikiInner.srcdoc = html;
+                        }
+                    } catch (e) {
+                        if (e.name === 'AbortError') return;
+                        if(wikiInner) wikiInner.srcdoc = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content.</div>`;
+                    }
+                }
+            } else if (wikiFrame) {
+                wikiFrame.close();
             }
 
             // --- 2. YouTube Window (JSFrame) ---
-            if (node.type === 'rip') {
+            if (node.type === 'rip' && showYoutube) {
                 try {
                     // Fetch Raw Wikitext to find ID
                     const rawData = await fetchApi({
@@ -531,6 +543,8 @@
                 } catch (e) {
                     if (e.name !== 'AbortError') console.error("Error finding video:", e);
                 }
+            } else if (youtubeFrame && !showYoutube) {
+                youtubeFrame.close();
             }
         }
 
@@ -945,6 +959,7 @@
             // Check if node already exists based on finalTitle
             let existingNode = nodes.find(n => n.id === finalTitle);
             if (existingNode) {
+                showPage(existingNode); // Trigger showPage for existing node
                 expandNode(existingNode);
                 return;
             }
