@@ -929,14 +929,19 @@
             if (nodesToRemove.size > 0) {
                 const toRemoveList = Array.from(nodesToRemove);
                 let currentDelay = 20;
+                let nodesPerBatch = 1;
                 const signal = globalAbortController.signal;
 
                 try {
-                    for (const nodeId of toRemoveList) {
+                    for (let i = 0; i < toRemoveList.length; ) {
                         if (signal.aborted) break;
 
-                        nodes = nodes.filter(n => n.id !== nodeId);
-                        links = links.filter(l => (l.source.id || l.source) !== nodeId && (l.target.id || l.target) !== nodeId);
+                        // Process Batch
+                        for (let b = 0; b < nodesPerBatch && i < toRemoveList.length; b++, i++) {
+                            const nodeId = toRemoveList[i];
+                            nodes = nodes.filter(n => n.id !== nodeId);
+                            links = links.filter(l => (l.source.id || l.source) !== nodeId && (l.target.id || l.target) !== nodeId);
+                        }
                         
                         // Recalc degrees
                         nodes.forEach(n => n.degree = 0);
@@ -949,7 +954,13 @@
 
                         restartSimulation();
                         await wait(currentDelay, signal);
-                        currentDelay = Math.max(0, currentDelay * 0.9);
+                        
+                        if (currentDelay > 1) {
+                            currentDelay *= 0.9;
+                        } else {
+                            currentDelay = 0;
+                            if (Math.random() < 0.1) nodesPerBatch = Math.min(nodesPerBatch + 1, 100);
+                        }
                     }
                 } catch (e) {
                      if (e.name !== 'AbortError') console.error(e);
