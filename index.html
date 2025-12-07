@@ -46,6 +46,13 @@
             height: 100%;
             overflow-y: auto;
         }
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        ::-webkit-scrollbar-corner { background: #1e1e1e; }
+        
         .control-group {
             display: flex;
             flex-direction: column;
@@ -1086,23 +1093,27 @@
                         <button id="randomBtn" style="width: 100%; background: #ff9f43;">Random Rip</button>
                     </div>
                     
-                    <div class="control-group">
-                        <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
-                        <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.05">
+                    <div id="forceHeader" style="cursor: pointer; background: #333; padding: 8px; margin-top: 10px; border-radius: 4px; user-select: none; font-size: 12px; color: #eee;">Graph Physics ▼</div>
+                    <div id="forceControls" style="display: block; padding-left: 5px; border-left: 2px solid #333; margin-top: 5px;">
+                        <div class="control-group">
+                            <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
+                            <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.05">
+                        </div>
+                        <div class="control-group">
+                            <label for="repelForce">Repel Force: <span id="repelForceVal">100</span></label>
+                            <input type="range" id="repelForce" min="0" max="1000" value="100">
+                        </div>
+                        <div class="control-group">
+                            <label for="linkForce">Link Force: <span id="linkForceVal">0.05</span></label>
+                            <input type="range" id="linkForce" min="0" max="1" step="0.05" value="0.05">
+                        </div>
+                        <div class="control-group">
+                            <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
+                            <input type="range" id="linkDistance" min="10" max="300" value="25">
+                        </div>
                     </div>
-                    <div class="control-group">
-                        <label for="repelForce">Repel Force: <span id="repelForceVal">100</span></label>
-                        <input type="range" id="repelForce" min="0" max="1000" value="100">
-                    </div>
-                    <div class="control-group">
-                        <label for="linkForce">Link Force: <span id="linkForceVal">0.05</span></label>
-                        <input type="range" id="linkForce" min="0" max="1" step="0.05" value="0.05">
-                    </div>
-                    <div class="control-group">
-                        <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
-                        <input type="range" id="linkDistance" min="10" max="300" value="25">
-                    </div>
-                    <div class="control-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
+
+                    <div class="control-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
                         <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki</label>
                         <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube</label>
                         <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="autoplayUnvisitedCheck"> Autoplay Random Unvisited Node</label>
@@ -1120,6 +1131,13 @@
             controlsFrame.show();
 
             // Attach Listeners
+            document.getElementById('forceHeader').addEventListener('click', (e) => {
+                const content = document.getElementById('forceControls');
+                const isVisible = content.style.display !== 'none';
+                content.style.display = isVisible ? 'none' : 'block';
+                e.target.innerText = isVisible ? 'Graph Physics ▶' : 'Graph Physics ▼';
+            });
+
             document.getElementById('addPageBtn').addEventListener('click', (e) => {
                 handleAddNode(document.getElementById('pageInput').value, false, e);
             });
