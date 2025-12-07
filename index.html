@@ -998,8 +998,28 @@
 
 
         async function handleRandomNode(e, namespace = 0, type = 'rip') {
+            // Visual Start - Spawn immediately for better UX
+            const startX = e.clientX || window.innerWidth / 2;
+            const startY = e.clientY || window.innerHeight / 2;
+            const tempId = "Loading... " + Date.now();
+            
+            // Calculate velocity vector towards center
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            let dx = centerX - startX;
+            let dy = centerY - startY;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+            const speed = 15; // Initial burst speed
+            
+            const placeholderNode = addNode(tempId, type, startX, startY);
+            placeholderNode.vx = (dx / dist) * speed;
+            placeholderNode.vy = (dy / dist) * speed;
+            placeholderNode.vibrationStart = Date.now(); // Start vibrating
+            
+            restartSimulation();
+
             try {
-                // Fetch random rip data first
+                // Fetch random rip data
                 const data = await fetchApi({
                     action: 'query',
                     format: 'json',
@@ -1015,45 +1035,31 @@
                     // Check if node already exists
                     let existingNode = nodes.find(n => n.id === val);
                     if (existingNode) {
+                        // Node exists: Remove placeholder and activate existing
+                        nodes = nodes.filter(n => n.id !== tempId);
+                        restartSimulation();
                         showPage(existingNode);
                         expandNode(existingNode);
                         return;
                     }
 
-                    // Node does not exist, proceed with animation
-                    const startX = e.clientX || window.innerWidth / 2;
-                    const startY = e.clientY || window.innerHeight / 2;
-                    const tempId = "Loading... " + Date.now();
-                    
-                    // Calculate velocity vector towards center
-                    const centerX = window.innerWidth / 2;
-                    const centerY = window.innerHeight / 2;
-                    let dx = centerX - startX;
-                    let dy = centerY - startY;
-                    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-                    const speed = 15; // Initial burst speed
-                    
-                    const placeholderNode = addNode(tempId, type, startX, startY);
-                    placeholderNode.vx = (dx / dist) * speed;
-                    placeholderNode.vy = (dy / dist) * speed;
-                    placeholderNode.vibrationStart = Date.now(); // Start vibrating
-                    
-                    restartSimulation();
-
-                    // Update Node
+                    // Update Placeholder to Real Node
                     placeholderNode.id = val;
-                    finalNode = placeholderNode; // FinalNode is a reference to placeholderNode
+                    finalNode = placeholderNode;
                     
                     restartSimulation();
                     showPage(finalNode);
                     expandNode(finalNode);
                 } else {
-                     // No data, do nothing
+                     // No data, cleanup
+                     nodes = nodes.filter(n => n.id !== tempId);
+                     restartSimulation();
                 }
             } catch (e) {
                 if (e.name !== 'AbortError') console.error("Error fetching random node:", e);
-                // No placeholder created yet, so no cleanup needed for placeholder if error happens before placeholder creation
-                // If error happens after placeholder creation but before update, the placeholder will remain "Loading..." which is fine.
+                // Cleanup on error
+                nodes = nodes.filter(n => n.id !== tempId);
+                restartSimulation();
             }
         }
 
