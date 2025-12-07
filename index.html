@@ -1064,7 +1064,7 @@
                 <div class="controls-content">
                     <div class="help-text">
                         <strong>Left-click</strong> node to fetch connections.<br>
-                        <strong>Right-click</strong> node to prune.<br>
+                        <strong>Right-click</strong> node to prune leaves, and again for self.<br>
                         <strong>Drag</strong> background to pan, wheel to zoom.<br>
                         <strong>Esc</strong> to cancel expansion.<br>
                         <span id="nodeCount" style="color: #fff;">Nodes: 0</span>
@@ -1083,18 +1083,24 @@
 
                     <div class="input-group">
                         <input type="text" id="pageInput" placeholder="Rip Title" value="">
-                        <button id="addPageBtn">Add Rip</button>
+                        <button id="addPageBtn" style="white-space: nowrap;">Add Rip</button>
                     </div>
                     <div class="input-group">
                         <input type="text" id="catInput" placeholder="Category" value="">
-                        <button id="addCatBtn">Add Cat</button>
+                        <button id="addCatBtn" style="white-space: nowrap;">Add Cat</button>
                     </div>
                     <div class="input-group">
-                        <button id="randomBtn" style="width: 100%; background: #ff9f43;">Random Rip</button>
+                        <button id="randomBtn" style="width: 100%; background: #ff9f43; white-space: nowrap;">Add Random Rip Node</button>
                     </div>
                     
-                    <div id="forceHeader" style="cursor: pointer; background: #333; padding: 8px; margin-top: 10px; border-radius: 4px; user-select: none; font-size: 12px; color: #eee;">Graph Physics ▼</div>
-                    <div id="forceControls" style="display: block; padding-left: 5px; border-left: 2px solid #333; margin-top: 5px;">
+                    <div class="control-group" style="margin-top: 10px; gap: 8px;">
+                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki Window</label>
+                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube Window</label>
+                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="autoplayUnvisitedCheck"> Autoplay Random Unvisited Node</label>
+                    </div>
+
+                    <div id="forceHeader" style="cursor: pointer; background: #333; padding: 8px; margin-top: 10px; border-radius: 4px; user-select: none; font-size: 12px; color: #eee; white-space: nowrap;">Graph Physics ▶</div>
+                    <div id="forceControls" style="display: none; padding-left: 5px; border-left: 2px solid #333; margin-top: 5px;">
                         <div class="control-group">
                             <label for="centerForce">Center Force: <span id="centerForceVal">0.05</span></label>
                             <input type="range" id="centerForce" min="0" max="0.2" step="0.001" value="0.05">
@@ -1111,12 +1117,6 @@
                             <label for="linkDistance">Link Distance: <span id="linkDistanceVal">25</span></label>
                             <input type="range" id="linkDistance" min="10" max="300" value="25">
                         </div>
-                    </div>
-
-                    <div class="control-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki</label>
-                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube</label>
-                        <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="autoplayUnvisitedCheck"> Autoplay Random Unvisited Node</label>
                     </div>
                 </div>
             `;
@@ -1217,14 +1217,8 @@
         // --- Init ---
         (function init() {
             initControls();
-            // Wait for controls to be ready? They are synchronous.
-            // But document.getElementById('pageInput') is now inside the frame.
-            // JSFrame might not append to DOM synchronously or might use shadow DOM?
-            // If JSFrame uses a div appended to body, it's synchronous.
-            
-            document.getElementById('pageInput').value = INITIAL_RIP;
-            addNode(INITIAL_RIP, 'rip', window.innerWidth/2, window.innerHeight/2);
-            restartSimulation();
+            // Start with a random rip
+            handleRandomNode({});
         })();
 
     </script>
