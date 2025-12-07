@@ -161,6 +161,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isDebugMode = urlParams.get('debug') === 'true';
         let isInitialLoad = true;
+        let frameCount = 0;
+        let timings = { camera: 0, render: 0 };
         
         // --- State ---
         let nodes = [];
@@ -291,6 +293,8 @@
 
 
         app.ticker.add((delta) => {
+            const t0 = performance.now();
+
             if (isDebugMode && fpsCounter) {
                 // Smoothed FPS Counter
                 const elapsed = app.ticker.elapsedMS;
@@ -312,15 +316,13 @@
                 if (p >= 1) p = 1;
                 
                 const easedP = d3.easeCubicOut(p);
-                const opt = trackingTargetScreenPos; // Use the stored optimal position
+                const opt = trackingTargetScreenPos;
                 const startT = trackingStartTransform;
                 const scale = startT.k; 
                 
-                // Target Translation based on CURRENT node position
                 const targetTx = opt.x - trackingNode.x * scale;
                 const targetTy = opt.y - trackingNode.y * scale;
                 
-                // Interpolate
                 const currentTx = startT.x + (targetTx - startT.x) * easedP;
                 const currentTy = startT.y + (targetTy - startT.y) * easedP;
                 
@@ -331,19 +333,16 @@
                 }
             }
 
-            // Run Physics
+            const t1 = performance.now();
+
+            // Run Physics & Render
             simulation.tick(); 
             const now = Date.now();
-
-            // Draw Links
             linkGraphics.clear();
             linkGraphics.lineStyle(1, 0x999999, 0.6);
-
             links.forEach(l => {
                 let sx = l.source.x, sy = l.source.y;
                 let tx = l.target.x, ty = l.target.y;
-
-                // Jitter logic
                 if (l.source.vibrationStart) {
                     const e = now - l.source.vibrationStart;
                     const i = Math.min(e * 0.02, 5);
@@ -356,44 +355,29 @@
                     tx += (Math.random() - 0.5) * i;
                     ty += (Math.random() - 0.5) * i;
                 }
-
                 linkGraphics.moveTo(sx, sy);
                 linkGraphics.lineTo(tx, ty);
             });
-
-            // Update Nodes
             nodes.forEach(n => {
                 let sprite = nodeSprites.get(n.id);
-                
-                // Create sprite if missing (should be handled in sync logic, but safety check)
                 if (!sprite) return; 
-
                 let dx = 0, dy = 0;
-                
-                // Logarithmic size: 1 conn = 1x
-                // Categories: 500 conn = ~3x, Rips: 500 conn = ~2x
                 const degree = n.degree || 0;
                 const factor = n.type === 'category' ? 0.322 : 0.161;
                 const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
-                
-                // Adjust for high-res texture
                 const finalScale = baseScale / TEXTURE_RES_MULT;
-
-                // Vibration Logic & Visuals
                 if (n.vibrationStart) {
                     const elapsed = now - n.vibrationStart;
                     const intensity = Math.min(elapsed * 0.02, 5);
                     dx = (Math.random() - 0.5) * intensity;
                     dy = (Math.random() - 0.5) * intensity;
-                    
-                    // Change texture/tint for loading effect
                     sprite.tint = 0xffcc00;
                     sprite.scale.set(finalScale * 1.1);
                     sprite.alpha = 1.0;
                 } else if (n.headShakeStart) {
                     const elapsed = now - n.headShakeStart;
                     if (elapsed < 500) {
-                        dx = Math.sin(elapsed * 0.05) * 3; // Shake
+                        dx = Math.sin(elapsed * 0.05) * 3;
                     } else {
                         n.headShakeStart = null;
                     }
@@ -405,10 +389,21 @@
                     sprite.scale.set(finalScale);
                     sprite.alpha = 1.0;
                 }
-
                 sprite.x = n.x + dx;
                 sprite.y = n.y + dy;
             });
+
+            const t2 = performance.now();
+
+            if (isDebugMode) {
+                timings.camera += (t1 - t0);
+                timings.render += (t2 - t1);
+                frameCount++;
+                if (frameCount % 60 === 0) {
+                    console.log(`Avg Timings (ms): Camera: ${(timings.camera / 60).toFixed(2)}, Render: ${(timings.render / 60).toFixed(2)}`);
+                    timings = { camera: 0, render: 0 };
+                }
+            }
         });
 
         // --- Popup Logic ---
