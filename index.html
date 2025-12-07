@@ -232,7 +232,8 @@
             "Category:Anonymous contributions",
             "Category:Original remixes",
             "Category:Videos",
-            "Category:YTPMV rips"
+            "Category:YTPMV rips",
+            "Category:Playlists"
         ]);
         
         // Vibrate textures not strictly needed with scale animation, but keeping for compatibility if referenced
@@ -828,14 +829,21 @@
                     if (categories === null) {
                         // Page does not exist -> Pop out of existence
                         nodes = nodes.filter(n => n.id !== d.id);
-                        links = links.filter(l => l.source.id !== d.id && l.target.id !== d.id);
+                        links = links.filter(l => (l.source.id || l.source) !== d.id && (l.target.id || l.target) !== d.id);
                         restartSimulation();
                         return;
                     }
                     newNeighbors = categories.map(cat => ({ ...cat, direction: 'parent' }));
                 } else {
+                    // Fetch members (children)
                     const members = await getCategoryMembers(d.id, signal);
-                    newNeighbors = members.map(mem => ({ ...mem, direction: 'child' }));
+                    const memberNeighbors = members.map(mem => ({ ...mem, direction: 'child' }));
+                    
+                    // Fetch parent categories
+                    const parents = await getPageCategories(d.id, signal);
+                    const parentNeighbors = (parents || []).map(p => ({ ...p, direction: 'parent' }));
+                    
+                    newNeighbors = [...memberNeighbors, ...parentNeighbors];
                 }
 
                 d.vibrationStart = null;
@@ -859,9 +867,11 @@
                     const nodeObj = addNode(n.title, type, nx, ny);
                     let added = false;
                     
-                    if (d.type === 'rip') {
+                    if (n.direction === 'parent') {
+                        // Parent Category -> Current Node
                         if (addLink(nodeObj.id, d.id)) added = true;
                     } else {
+                        // Current Node -> Child
                         if (addLink(d.id, nodeObj.id)) added = true;
                     }
 
@@ -917,7 +927,7 @@
                         if (signal.aborted) break;
 
                         nodes = nodes.filter(n => n.id !== nodeId);
-                        links = links.filter(l => l.source.id !== nodeId && l.target.id !== nodeId);
+                        links = links.filter(l => (l.source.id || l.source) !== nodeId && (l.target.id || l.target) !== nodeId);
                         
                         // Recalc degrees
                         nodes.forEach(n => n.degree = 0);
@@ -1138,6 +1148,10 @@
                         <div class="legend-item">
                             <div class="legend-color" style="background: #ff9f43;"></div>
                             <span>Category</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #000000; border: 1px solid #fff;"></div>
+                            <span>Massive Category</span>
                         </div>
                     </div>
 
