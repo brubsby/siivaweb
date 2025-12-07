@@ -230,7 +230,9 @@
             "Category:Arrangements",
             "Category:Rips with pitch-shifting",
             "Category:Anonymous contributions",
-            "Category:Original remixes"
+            "Category:Original remixes",
+            "Category:Videos",
+            "Category:YTPMV rips"
         ]);
         
         // Vibrate textures not strictly needed with scale animation, but keeping for compatibility if referenced
@@ -1301,14 +1303,14 @@
         }
 
         function playNextRandomCategory() {
-            const unvisitedCats = nodes.filter(n => !n.visited && n.type === 'category');
+            const unvisitedCats = nodes.filter(n => !n.visited && n.type === 'category' && !MASSIVE_CATEGORIES.has(n.id));
             if (unvisitedCats.length > 0) {
                 const randomIndex = Math.floor(Math.random() * unvisitedCats.length);
                 const node = unvisitedCats[randomIndex];
                 showPage(node);
                 expandNode(node);
             } else {
-                console.log("No unvisited categories left.");
+                console.log("No unvisited categories left (excluding massive ones).");
             }
         }
 
