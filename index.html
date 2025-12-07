@@ -852,33 +852,42 @@
                 const angleStep = (2 * Math.PI) / (newNeighbors.length || 1);
                 
                 let currentDelay = 20;
+                let nodesPerBatch = 1;
 
-                for (let i = 0; i < newNeighbors.length; i++) {
+                for (let i = 0; i < newNeighbors.length;) {
                     if (signal.aborted) break;
+                    
+                    let batchAdded = false;
 
-                    const n = newNeighbors[i];
-                    const type = n.ns === 14 ? 'category' : 'rip';
-                    // Random angle for initial position
-                    const angle = Math.random() * 2 * Math.PI; 
-                    const dist = 50 + Math.random() * 50; // Random distance between 50 and 100
-                    const nx = d.x + Math.cos(angle) * dist;
-                    const ny = d.y + Math.sin(angle) * dist;
-                    
-                    const nodeObj = addNode(n.title, type, nx, ny);
-                    let added = false;
-                    
-                    if (n.direction === 'parent') {
-                        // Parent Category -> Current Node
-                        if (addLink(nodeObj.id, d.id)) added = true;
-                    } else {
-                        // Current Node -> Child
-                        if (addLink(d.id, nodeObj.id)) added = true;
+                    // Process batch
+                    for (let b = 0; b < nodesPerBatch && i < newNeighbors.length; b++, i++) {
+                        const n = newNeighbors[i];
+                        const type = n.ns === 14 ? 'category' : 'rip';
+                        
+                        const angle = Math.random() * 2 * Math.PI; 
+                        const dist = 50 + Math.random() * 50;
+                        const nx = d.x + Math.cos(angle) * dist;
+                        const ny = d.y + Math.sin(angle) * dist;
+                        
+                        const nodeObj = addNode(n.title, type, nx, ny);
+                        
+                        if (n.direction === 'parent') {
+                            if (addLink(nodeObj.id, d.id)) batchAdded = true;
+                        } else {
+                            if (addLink(d.id, nodeObj.id)) batchAdded = true;
+                        }
                     }
 
-                    if (added) {
+                    if (batchAdded) {
                         restartSimulation();
                         await wait(currentDelay, signal);
-                        currentDelay = Math.max(0, currentDelay * 0.9); // Accelerate down to 0ms
+                        
+                        if (currentDelay > 1) {
+                            currentDelay *= 0.9;
+                        } else {
+                            currentDelay = 0;
+                            if (Math.random() < 0.1) nodesPerBatch = Math.min(nodesPerBatch + 1, 100);
+                        }
                     }
                 }
             } catch (e) {
