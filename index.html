@@ -186,10 +186,17 @@
         <div class="control-group" style="flex-direction: row; gap: 10px;">
             <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki</label>
             <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showYoutubeCheck" checked> Sync YouTube</label>
+            <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="autoplayUnvisitedCheck"> Autoplay Random Unvisited Node</label>
         </div>
     </div>
 
     <script>
+        // Load YouTube IFrame API
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
         // --- Configuration ---
         const NODE_RADIUS = 10;
         const INITIAL_RIP = "Athletic Theme (PAL Version) - Super Mario World";
@@ -363,6 +370,9 @@
         let currentYoutubeVideoId = null; // Track current video in YouTube frame
         let currentWikiTitle = null; // Track current wiki page title
         let showPageAbortController = null;
+        
+        // YouTube API Player Instance
+        let ytPlayer = null;
 
         async function showPage(node) {
             if (showPageAbortController) {
@@ -516,28 +526,47 @@
                     }
 
                     if (videoId) {
-                        const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-                        
                         if (!youtubeFrame) {
                             youtubeFrame = jsFrame.create({
                                 title: 'YouTube Player',
                                 left: 640, top: 20, width: 480, height: 320,
                                 movable: true, resizable: true,
-                                html: `<iframe id="ytInnerFrame" width="100%" height="100%" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+                                html: '<div id="ytPlayer"></div>'
                             });
                             youtubeFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
-                            youtubeFrame.on('close', () => { youtubeFrame = null; currentYoutubeVideoId = null; });
+                            youtubeFrame.on('close', () => { 
+                                youtubeFrame = null; 
+                                if (ytPlayer) {
+                                    ytPlayer.destroy();
+                                    ytPlayer = null;
+                                }
+                                currentYoutubeVideoId = null; 
+                            });
                             youtubeFrame.show();
+                            
+                            if (window.YT && window.YT.Player) {
+                                ytPlayer = new YT.Player('ytPlayer', {
+                                    height: '100%',
+                                    width: '100%',
+                                    videoId: videoId,
+                                    playerVars: {
+                                        'autoplay': 1,
+                                        'origin': window.location.origin
+                                    },
+                                    events: {
+                                        'onStateChange': onPlayerStateChange
+                                    }
+                                });
+                            }
                             currentYoutubeVideoId = videoId;
                         } else {
                             // Update existing frame
-                            const ytInner = document.getElementById('ytInnerFrame');
-                            if (ytInner && currentYoutubeVideoId !== videoId) {
-                                ytInner.src = embedUrl;
-                                currentYoutubeVideoId = videoId;
-                            }
                             youtubeFrame.show();
                             youtubeFrame.requestFocus();
+                            if (currentYoutubeVideoId !== videoId && ytPlayer && ytPlayer.loadVideoById) {
+                                ytPlayer.loadVideoById(videoId);
+                                currentYoutubeVideoId = videoId;
+                            }
                         }
                     }
                 } catch (e) {
@@ -1123,6 +1152,35 @@
             linkDistanceBase = v;
             simulation.force("link").distance(getLinkDistance);
             simulation.alpha(1).restart();
+        });
+
+        // YouTube Autoplay Logic
+        function onPlayerStateChange(event) {
+            // YT.PlayerState.ENDED is 0
+            if (event.data === 0) { 
+                if (document.getElementById('autoplayUnvisitedCheck').checked) {
+                    playNextRandomRip();
+                }
+            }
+        }
+
+        function playNextRandomRip() {
+            const unvisitedRips = nodes.filter(n => !n.visited && n.type === 'rip');
+            if (unvisitedRips.length > 0) {
+                const randomIndex = Math.floor(Math.random() * unvisitedRips.length);
+                const node = unvisitedRips[randomIndex];
+                showPage(node);
+                expandNode(node);
+            } else {
+                console.log("No unvisited rips left. Stopping autoplay.");
+                document.getElementById('autoplayUnvisitedCheck').checked = false;
+            }
+        }
+
+        document.getElementById('autoplayUnvisitedCheck').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                playNextRandomRip();
+            }
         });
 
         // --- Init ---
