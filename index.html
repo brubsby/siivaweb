@@ -880,6 +880,13 @@
 
                     if (batchAdded) {
                         restartSimulation();
+                        
+                        // Skip animation if laggy (< 30 FPS)
+                        if (app.ticker.FPS < 30) {
+                            currentDelay = 0;
+                            nodesPerBatch = 200; 
+                        }
+
                         await wait(currentDelay, signal);
                         
                         if (currentDelay > 1) {
@@ -953,6 +960,12 @@
                         });
 
                         restartSimulation();
+                        
+                        if (app.ticker.FPS < 30) {
+                            currentDelay = 0;
+                            nodesPerBatch = 200;
+                        }
+
                         await wait(currentDelay, signal);
                         
                         if (currentDelay > 1) {
