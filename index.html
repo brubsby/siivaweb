@@ -463,11 +463,24 @@
                                 </body>
                                 </html>
                             `;
-                            wikiInner.srcdoc = html;
+                            
+                            const blob = new Blob([html], { type: 'text/html' });
+                            const url = URL.createObjectURL(blob);
+                            
+                            if (wikiInner.dataset.blobUrl) {
+                                URL.revokeObjectURL(wikiInner.dataset.blobUrl);
+                            }
+                            
+                            wikiInner.removeAttribute('srcdoc');
+                            wikiInner.src = url;
+                            wikiInner.dataset.blobUrl = url;
                         }
                     } catch (e) {
                         if (e.name === 'AbortError') return;
-                        if(wikiInner) wikiInner.srcdoc = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content.</div>`;
+                        if(wikiInner) {
+                             wikiInner.removeAttribute('src');
+                             wikiInner.srcdoc = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content.</div>`;
+                        }
                     }
                 }
             } else if (wikiFrame) {
