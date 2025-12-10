@@ -1771,7 +1771,12 @@
           .getElementById("autoplayUnvisitedCheck")
           .addEventListener("change", (e) => {
             if (e.target.checked) {
-              playNextRandomRip();
+              const syncYT = document.getElementById("showYoutubeCheck");
+              if (syncYT && !syncYT.checked) syncYT.checked = true;
+
+              if (!youtubeFrame) {
+                playNextRandomRip();
+              }
             }
           });
       }
