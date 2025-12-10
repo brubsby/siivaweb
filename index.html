@@ -494,9 +494,20 @@
         "            prop: 'text',\n" +
         "            mobileformat: 1,\n" +
         "            origin: '*',\n" +
+        "            _t: Date.now(),\n" +
         "        });\n" +
         "        const res = await fetch('https://siivagunner.wiki/w/api.php?' + params.toString());\n" +
-        "        const data = await res.json();\n" +
+        "        if (!res.ok) {\n" +
+        "            throw new Error('Wiki API Error: ' + res.status + ' ' + res.statusText);\n" +
+        "        }\n" +
+        "        const rawText = await res.text();\n" +
+        "        let data;\n" +
+        "        try {\n" +
+        "            data = JSON.parse(rawText);\n" +
+        "        } catch (e) {\n" +
+        "            // It's likely an HTML error page or 'MediaWiki ...' internal error\n" +
+        "            throw new Error('Invalid JSON from Wiki: ' + rawText.substring(0, 150));\n" +
+        "        }\n" +
         "        if (data.parse && data.parse.text) {\n" +
         "            let content = data.parse.text['*'];\n" +
         "            content = content.replace(/src=[\"']\\//g, 'src=\"https://siivagunner.wiki/');\n" +
@@ -590,6 +601,10 @@
             wikiFrame.setTitleBarClassName("dark-titlebar", "dark-titlebar");
             wikiFrame.on("closeButton", "click", (_frame) => {
               _frame.closeFrame();
+              const wikiInner = document.getElementById("wikiInnerFrame");
+              if (wikiInner && wikiInner.dataset.blobUrl) {
+                URL.revokeObjectURL(wikiInner.dataset.blobUrl);
+              }
               wikiFrame = null;
               currentWikiTitle = null;
               updateSelectionVisuals();
@@ -1004,25 +1019,57 @@
         }
       });
 
-      async function fetchApi(params, signal) {
+      async function fetchApi(params, signal, retries = 3) {
         const url = new URL(API_BASE);
-        url.search = new URLSearchParams({ ...params, origin: "*" });
-        console.log("Fetching API:", url.toString()); 
-        try {
-          const response = await fetch(url, { signal });
-          if (!response.ok)
-            throw new Error(`API Error: ${response.statusText}`);
-          return response.json();
-        } catch (e) {
-          if (e.name === "AbortError") {
-            console.log("Fetch aborted.");
-          } else {
-            console.error(
-              "Fetch failed. This could be a network issue, CORS, or a browser extension blocking the request.",
-              e,
-            );
+        url.search = new URLSearchParams({ ...params, origin: "*", _t: Date.now() });
+        // console.log("Fetching API:", url.toString()); 
+        
+        for (let i = 0; i <= retries; i++) {
+          try {
+            const response = await fetch(url, { signal });
+            if (!response.ok) {
+              const status = response.status;
+              // Try to read error text but don't fail if it's not text
+              let text = "";
+              try { text = await response.text(); } catch(err) {} 
+              
+              console.warn(`API Error ${status}: ${text.substring(0, 200)}`);
+
+              // Retry on 5xx errors
+              if (status >= 500 && i < retries) {
+                const delay = 1000 * Math.pow(2, i);
+                console.log(`Server error ${status}. Retrying in ${delay}ms...`);
+                if (signal) await wait(delay, signal);
+                else await new Promise(r => setTimeout(r, delay));
+                continue;
+              }
+              throw new Error(`API Error: ${response.statusText} (${status})`);
+            }
+            return await response.json();
+          } catch (e) {
+            if (e.name === "AbortError" || (e.message && e.message.includes("Aborted"))) {
+              console.log("Fetch aborted.");
+              throw e;
+            }
+            
+            console.warn(`Fetch attempt ${i + 1} failed:`, e);
+            
+            if (i < retries) {
+              const delay = 1000 * Math.pow(2, i);
+              if (signal) {
+                  try {
+                    await wait(delay, signal);
+                  } catch (abortErr) {
+                    throw abortErr;
+                  }
+              } else {
+                  await new Promise(r => setTimeout(r, delay));
+              }
+            } else {
+              console.error("Fetch failed permanently after retries.");
+              throw e;
+            }
           }
-          throw e; // Re-throw so the caller knows it failed.
         }
       }
 
