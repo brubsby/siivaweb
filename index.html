@@ -541,6 +541,24 @@
         });
       }
 
+      function triggerSmartRecenter() {
+        let targetNode = null;
+        if (currentWikiTitle) {
+          targetNode = nodes.find((n) => n.id === currentWikiTitle);
+        } else if (currentYoutubeNodeId) {
+          targetNode = nodes.find((n) => n.id === currentYoutubeNodeId);
+        }
+
+        if (targetNode) {
+          focusOnNode(targetNode);
+        } else {
+          focusOnNode({
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+          });
+        }
+      }
+
       async function showPage(node) {
         if (showPageAbortController) {
           showPageAbortController.abort();
@@ -576,12 +594,15 @@
               wikiFrame = null;
               currentWikiTitle = null;
               updateSelectionVisuals();
+              triggerSmartRecenter();
             });
             wikiFrame.show();
+            triggerSmartRecenter();
             needsWikiUpdate = true;
           } else {
             wikiFrame.setTitle("Wiki: " + displayTitle);
             wikiFrame.show();
+            triggerSmartRecenter();
             wikiFrame.requestFocus();
             if (currentWikiTitle !== title) {
               needsWikiUpdate = true;
@@ -707,8 +728,10 @@
                   currentYoutubeVideoId = null;
                   currentYoutubeNodeId = null;
                   updateSelectionVisuals();
+                  triggerSmartRecenter();
                 });
                 youtubeFrame.show();
+                triggerSmartRecenter();
                 if (window.YT && window.YT.Player) {
                   ytPlayer = new YT.Player("ytPlayer", {
                     height: "100%",
@@ -724,6 +747,7 @@
                 currentYoutubeVideoId = videoId;
               } else {
                 youtubeFrame.show();
+                triggerSmartRecenter();
                 youtubeFrame.requestFocus();
                 if (
                   currentYoutubeVideoId !== videoId &&
@@ -1558,6 +1582,10 @@
           html: controlsHtml,
         });
         controlsFrame.setTitleBarClassName("dark-titlebar", "dark-titlebar");
+        controlsFrame.on("closeButton", "click", (_frame) => {
+          _frame.closeFrame();
+          triggerSmartRecenter();
+        });
         controlsFrame.show();
 
         // Attach Listeners
