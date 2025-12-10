@@ -2059,6 +2059,20 @@
         }
       });
 
+      // --- Iframe Drag Fix ---
+      // Prevents mouse events from being captured by iframes when dragging windows quickly
+      window.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.jsframe-titlebar') || e.target.closest('.dark-titlebar')) {
+              const iframes = document.querySelectorAll('iframe');
+              iframes.forEach(iframe => iframe.style.pointerEvents = 'none');
+          }
+      }, true);
+
+      window.addEventListener('mouseup', () => {
+          const iframes = document.querySelectorAll('iframe');
+          iframes.forEach(iframe => iframe.style.pointerEvents = 'auto');
+      }, true);
+
       // --- Init ---
       (async function init() {
         initControls();
