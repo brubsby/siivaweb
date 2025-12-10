@@ -2089,9 +2089,9 @@
         if (unvisitedRips.length > 0) {
           const randomIndex = Math.floor(Math.random() * unvisitedRips.length);
           const node = unvisitedRips[randomIndex];
-          await showPage(node);
           focusOnNode(node);
           expandNode(node);
+          await showPage(node);
         } else {
           console.log("No unvisited rips left. Stopping autoplay.");
           document.getElementById("autoplayUnvisitedCheck").checked = false;
@@ -2108,9 +2108,9 @@
         if (unvisitedCats.length > 0) {
           const randomIndex = Math.floor(Math.random() * unvisitedCats.length);
           const node = unvisitedCats[randomIndex];
-          await showPage(node);
           focusOnNode(node);
           expandNode(node);
+          await showPage(node);
         } else {
           console.log("No unvisited categories left (excluding massive ones).");
         }
