@@ -1,1291 +1,1473 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SiIvaGunner Rip Graph (WebGL/PixiJS)</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsframe.js/lib/jsframe.min.js"></script>
     <style>
-        .jsframe-wiki-content {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #1e1e1e;
-        }
-        /* Custom Title Bar Style */
-        .dark-titlebar {
-            background-color: #222222 !important;
-            color: #eeeeee !important;
-            border-bottom: 1px solid #444;
-        }
-        
-        .jsframe-title-button-close { 
-            filter: invert(100%); 
-        }
-        body {
-            margin: 0;
-            background-color: #1e1e1e;
-            color: #ccc;
-            font-family: sans-serif;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-        .controls-content {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: #1e1e1e;
-            color: #ccc;
-            height: 100%;
-            overflow-y: auto;
-        }
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: #1e1e1e; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-        ::-webkit-scrollbar-corner { background: #1e1e1e; }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-        .control-group label {
-            margin-bottom: 5px;
-            font-size: 12px;
-            color: #aaa;
-        }
-        .control-group input[type="range"] {
-            width: 100%;
-        }
-        .help-text {
-            font-size: 11px;
-            color: #aaa;
-            margin-bottom: 12px;
-            line-height: 1.4;
-            border-bottom: 1px solid #444;
-            padding-bottom: 8px;
-        }
-        .help-text strong {
-            color: #69b3a2;
-        }
-        .input-group {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 8px;
-        }
-        .input-group input[type="text"] {
-            background: #333;
-            border: 1px solid #555;
-            color: #eee;
-            padding: 5px;
-            border-radius: 4px;
-            flex-grow: 1;
-        }
-        .input-group button {
-            background: #69b3a2;
-            border: none;
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .input-group button:hover {
-            background: #5aa090;
-        }
-        .legend {
-            display: flex;
-            gap: 10px;
-            font-size: 11px;
-            margin-bottom: 5px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .legend-color {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-        /* HTML Tooltip for better text rendering/handling than Pixi text */
-        #tooltip {
-            position: absolute;
-            background: rgba(30, 30, 30, 0.9);
-            color: #eee;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none;
-            display: none;
-            z-index: 200;
-            border: 1px solid #555;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-        #fpsCounter {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 5px 10px;
-            background: rgba(0, 0, 0, 0.6);
-            color: #00ff00;
-            font-family: monospace;
-            font-size: 14px;
-            z-index: 99999;
-            border-radius: 3px;
-        }
+      .jsframe-wiki-content {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: #1e1e1e;
+      }
+      /* Custom Title Bar Style */
+      .dark-titlebar {
+        background-color: #222222 !important;
+        color: #eeeeee !important;
+        border-bottom: 1px solid #444;
+      }
+
+      .jsframe-title-button-close {
+        filter: invert(100%);
+      }
+      body {
+        margin: 0;
+        background-color: #1e1e1e;
+        color: #ccc;
+        font-family: sans-serif;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      .controls-content {
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: #1e1e1e;
+        color: #ccc;
+        height: 100%;
+        overflow-y: auto;
+        box-sizing: border-box;
+      }
+      /* Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #444;
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      ::-webkit-scrollbar-corner {
+        background: #1e1e1e;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+      }
+      .control-group label {
+        margin-bottom: 5px;
+        font-size: 12px;
+        color: #aaa;
+      }
+      .control-group input[type="range"] {
+        width: 100%;
+      }
+      .help-text {
+        font-size: 11px;
+        color: #aaa;
+        margin-bottom: 12px;
+        line-height: 1.4;
+        border-bottom: 1px solid #444;
+        padding-bottom: 8px;
+      }
+      .help-text strong {
+        color: #69b3a2;
+      }
+      .input-group {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 8px;
+      }
+      .input-group input[type="text"] {
+        background: #333;
+        border: 1px solid #555;
+        color: #eee;
+        padding: 5px;
+        border-radius: 4px;
+        flex-grow: 1;
+      }
+      .input-group button {
+        background: #69b3a2;
+        border: none;
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .input-group button:hover {
+        background: #5aa090;
+      }
+      .legend {
+        display: flex;
+        gap: 10px;
+        font-size: 11px;
+        margin-bottom: 5px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .legend-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      /* HTML Tooltip for better text rendering/handling than Pixi text */
+      #tooltip {
+        position: absolute;
+        background: rgba(30, 30, 30, 0.9);
+        color: #eee;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        display: none;
+        z-index: 200;
+        border: 1px solid #555;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      #fpsCounter {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #00ff00;
+        font-family: monospace;
+        font-size: 14px;
+        z-index: 99999;
+        border-radius: 3px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="tooltip"></div>
+    <div
+      id="debugTooltip"
+      style="
+        position: fixed;
+        background: rgba(0, 0, 0, 0.8);
+        color: lime;
+        padding: 5px;
+        border: 1px solid lime;
+        font-family: monospace;
+        font-size: 12px;
+        pointer-events: none;
+        display: none;
+        z-index: 100000;
+      "
+    ></div>
 
     <script>
-        // Load YouTube IFrame API
-        var tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      // Load YouTube IFrame API
+      var tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-        // --- Configuration ---
-        const NODE_RADIUS = 10;
-        const INITIAL_RIP = "Athletic Theme (PAL Version) - Super Mario World";
-        const API_BASE = "https://siivagunner.wiki/w/api.php";
-        const urlParams = new URLSearchParams(window.location.search);
-        const isDebugMode = urlParams.get('debug') === 'true';
-        let isInitialLoad = true;
-        let frameCount = 0;
-        let timings = { camera: 0, render: 0 };
-        
-        // --- State ---
-        let nodes = [];
-        let links = [];
-        let linkDistanceBase = 25;
-        let tooltip = document.getElementById('tooltip');
-        let abortExpansion = false;
-        let globalAbortController = new AbortController();
-        let controlsFrame = null;
+      // --- Configuration ---
+      const NODE_RADIUS = 10;
+      const INITIAL_RIP = "Athletic Theme (PAL Version) - Super Mario World";
+      const API_BASE = "https://siivagunner.wiki/w/api.php";
+      const urlParams = new URLSearchParams(window.location.search);
+      const isDebugMode = urlParams.get("debug") === "true";
+      let isInitialLoad = true;
+      let isDebugView = false;
+      let debugGridData = null;
+      let frameCount = 0;
+      let timings = { camera: 0, render: 0 };
 
-        function wait(ms, signal) {
-            return new Promise((resolve, reject) => {
-                if (signal.aborted) {
-                    reject(new DOMException('Aborted', 'AbortError'));
-                    return;
-                }
-                const timer = setTimeout(resolve, ms);
-                signal.addEventListener('abort', () => {
-                    clearTimeout(timer);
-                    reject(new DOMException('Aborted', 'AbortError'));
-                }, { once: true });
-            });
+      // --- State ---
+      let nodes = [];
+      let links = [];
+      let linkDistanceBase = 25;
+      let tooltip = document.getElementById("tooltip");
+      let abortExpansion = false;
+      let globalAbortController = new AbortController();
+      let controlsFrame = null;
+
+      function wait(ms, signal) {
+        return new Promise((resolve, reject) => {
+          if (signal.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+          const timer = setTimeout(resolve, ms);
+          signal.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(timer);
+              reject(new DOMException("Aborted", "AbortError"));
+            },
+            { once: true },
+          );
+        });
+      }
+
+      // --- PixiJS Setup ---
+      const app = new PIXI.Application({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        antialias: true,
+        backgroundColor: 0x1e1e1e,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
+      document.body.appendChild(app.view);
+
+      let fpsCounter = null;
+      if (isDebugMode) {
+        fpsCounter = document.createElement("div");
+        fpsCounter.id = "fpsCounter";
+        document.body.appendChild(fpsCounter);
+      }
+      const fpsHistory = [];
+      const FPS_HISTORY_COUNT = 30;
+
+      // Container for the graph (moves with zoom)
+      const viewport = new PIXI.Container();
+      app.stage.addChild(viewport);
+
+      let debugGraphics = null;
+      if (isDebugMode) {
+          debugGraphics = new PIXI.Graphics();
+          debugGraphics.eventMode = "none"; // Pass through clicks
+          app.stage.addChild(debugGraphics);
+      }
+
+      // Prevent default context menu on canvas
+      app.view.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+      });
+
+      // Layers
+      const linkGraphics = new PIXI.Graphics();
+      const nodeContainer = new PIXI.Container();
+      viewport.addChild(linkGraphics);
+      viewport.addChild(nodeContainer);
+
+      // Textures (Generated once for performance)
+      const TEXTURE_RES_MULT = 4;
+
+      function createCircleTexture(color, radius) {
+        const gr = new PIXI.Graphics();
+        gr.beginFill(color);
+        gr.lineStyle(1.5 * TEXTURE_RES_MULT, 0xffffff);
+        gr.drawCircle(0, 0, radius * TEXTURE_RES_MULT);
+        gr.endFill();
+        return app.renderer.generateTexture(gr);
+      }
+
+      function createMassiveTexture(radius) {
+        const gr = new PIXI.Graphics();
+        gr.beginFill(0x000000);
+        gr.lineStyle(2 * TEXTURE_RES_MULT, 0xffffff);
+        gr.drawCircle(0, 0, radius * TEXTURE_RES_MULT);
+        gr.endFill();
+        return app.renderer.generateTexture(gr);
+      }
+
+      const ripTexture = createCircleTexture(0x4a90e2, NODE_RADIUS);
+      const catTexture = createCircleTexture(0xff9f43, NODE_RADIUS);
+      const massiveCatTexture = createMassiveTexture(NODE_RADIUS);
+
+      const MASSIVE_CATEGORIES = new Set([
+        "Category:Rips",
+        "Category:Mashups",
+        "Category:Switcheroos",
+        "Category:Renamed rips",
+        "Category:Melody changes",
+        "Category:Rips with sentence mixing",
+        "Category:Arrangements",
+        "Category:Rips with pitch-shifting",
+        "Category:Anonymous contributions",
+        "Category:Original remixes",
+        "Category:Videos",
+        "Category:YTPMV rips",
+        "Category:Playlists",
+        "Category:Rips referencing other rips",
+      ]);
+
+      // Vibrate textures not strictly needed with scale animation, but keeping for compatibility if referenced
+      const ripTextureVibrate = createCircleTexture(0x4a90e2, NODE_RADIUS + 1);
+      const catTextureVibrate = createCircleTexture(0xff9f43, NODE_RADIUS + 1);
+
+      // Map to keep track of sprites {nodeId: Sprite}
+      const nodeSprites = new Map();
+
+      // --- D3 Simulation ---
+      const simulation = d3
+        .forceSimulation(nodes)
+        .force(
+          "link",
+          d3
+            .forceLink(links)
+            .id((d) => d.id)
+            .distance(getLinkDistance)
+            .strength(0.05),
+        )
+        .force("charge", d3.forceManyBody().strength(-100).theta(0.5))
+        .force(
+          "center",
+          d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2),
+        )
+        .force("x", d3.forceX(window.innerWidth / 2).strength(0.05))
+        .force("y", d3.forceY(window.innerHeight / 2).strength(0.05))
+        .stop();
+
+      function getLinkDistance(d) {
+        const source = d.source;
+        const target = d.target;
+        let dist = linkDistanceBase;
+        if (source.type === "category" && target.type === "category")
+          dist *= 2.0;
+        else if (source.type === "category" || target.type === "category")
+          dist *= 1.2;
+        else dist *= 0.8;
+
+        const combinedDegree = (source.degree || 0) + (target.degree || 0);
+        if (combinedDegree > 5) dist += Math.min(combinedDegree * 2, 100);
+        return dist;
+      }
+
+      app.ticker.add((delta) => {
+        const t0 = performance.now();
+
+        if (isDebugMode && fpsCounter) {
+          // Smoothed FPS Counter
+          const elapsed = app.ticker.elapsedMS;
+          fpsHistory.push(elapsed);
+          if (fpsHistory.length > FPS_HISTORY_COUNT) {
+            fpsHistory.shift();
+          }
+          const avgElapsed =
+            fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+          const avgFps = 1000 / (avgElapsed || 1);
+          fpsCounter.innerText = `FPS: ${Math.round(avgFps)}`;
         }
 
-        // --- PixiJS Setup ---
-        const app = new PIXI.Application({
-            width: window.innerWidth,
-            height: window.innerHeight,
-            antialias: true,
-            backgroundColor: 0x1e1e1e,
-            resolution: window.devicePixelRatio || 1,
-            autoDensity: true,
-        });
-        document.body.appendChild(app.view);
+        // Camera Tracking
+        if (trackingNode) {
+          const now = Date.now();
+          const elapsed = now - trackingStartTime;
+          let p = elapsed / TRACKING_DURATION;
 
-        let fpsCounter = null;
+          if (p >= 1) p = 1;
+
+          const easedP = d3.easeCubicOut(p);
+          const opt = trackingTargetScreenPos;
+          const startT = trackingStartTransform;
+          const scale = startT.k;
+
+          const targetTx = opt.x - trackingNode.x * scale;
+          const targetTy = opt.y - trackingNode.y * scale;
+
+          const currentTx = startT.x + (targetTx - startT.x) * easedP;
+          const currentTy = startT.y + (targetTy - startT.y) * easedP;
+
+          zoom.transform(
+            d3.select(app.view),
+            new d3.ZoomTransform(scale, currentTx, currentTy),
+          );
+
+          if (p >= 1) {
+            trackingNode = null;
+          }
+        }
+
+        const t1 = performance.now();
+
+        // Run Physics & Render
+        simulation.tick();
+        const now = Date.now();
+        linkGraphics.clear();
+        linkGraphics.lineStyle(1, 0x999999, 0.6);
+        links.forEach((l) => {
+          let sx = l.source.x,
+            sy = l.source.y;
+          let tx = l.target.x,
+            ty = l.target.y;
+          if (l.source.vibrationStart) {
+            const e = now - l.source.vibrationStart;
+            const i = Math.min(e * 0.02, 5);
+            sx += (Math.random() - 0.5) * i;
+            sy += (Math.random() - 0.5) * i;
+          }
+          if (l.target.vibrationStart) {
+            const e = now - l.target.vibrationStart;
+            const i = Math.min(e * 0.02, 5);
+            tx += (Math.random() - 0.5) * i;
+            ty += (Math.random() - 0.5) * i;
+          }
+          linkGraphics.moveTo(sx, sy);
+          linkGraphics.lineTo(tx, ty);
+        });
+        nodes.forEach((n) => {
+          let sprite = nodeSprites.get(n.id);
+          if (!sprite) return;
+          let dx = 0,
+            dy = 0;
+          const degree = n.degree || 0;
+          const factor = n.type === "category" ? 0.322 : 0.161;
+          const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
+          const finalScale = baseScale / TEXTURE_RES_MULT;
+          if (n.vibrationStart) {
+            const elapsed = now - n.vibrationStart;
+            const intensity = Math.min(elapsed * 0.02, 5);
+            dx = (Math.random() - 0.5) * intensity;
+            dy = (Math.random() - 0.5) * intensity;
+            sprite.tint = 0xffcc00;
+            sprite.scale.set(finalScale * 1.1);
+            sprite.alpha = 1.0;
+          } else if (n.headShakeStart) {
+            const elapsed = now - n.headShakeStart;
+            if (elapsed < 500) {
+              dx = Math.sin(elapsed * 0.05) * 3;
+            } else {
+              n.headShakeStart = null;
+            }
+            sprite.tint = n.visited ? 0xffffff : 0x999999;
+            sprite.scale.set(finalScale);
+            sprite.alpha = 1.0;
+          } else {
+            sprite.tint = n.visited ? 0xffffff : 0x999999;
+            sprite.scale.set(finalScale);
+            sprite.alpha = 1.0;
+          }
+          sprite.x = n.x + dx;
+          sprite.y = n.y + dy;
+        });
+
+        const t2 = performance.now();
+
         if (isDebugMode) {
-            fpsCounter = document.createElement('div');
-            fpsCounter.id = 'fpsCounter';
-            document.body.appendChild(fpsCounter);
+          timings.camera += t1 - t0;
+          timings.render += t2 - t1;
+          frameCount++;
+          if (frameCount % 60 === 0) {
+            console.log(
+              `Avg Timings (ms): Camera: ${(timings.camera / 60).toFixed(2)}, Render: ${(timings.render / 60).toFixed(2)}`,
+            );
+            timings = { camera: 0, render: 0 };
+          }
         }
-        const fpsHistory = [];
-        const FPS_HISTORY_COUNT = 30;
+      });
 
-        // Container for the graph (moves with zoom)
-        const viewport = new PIXI.Container();
-        app.stage.addChild(viewport);
+      // --- Popup Logic ---
+      const jsFrame = new JSFrame();
+      let wikiFrame = null;
+      let youtubeFrame = null;
+      let currentYoutubeVideoId = null; // Track current video in YouTube frame
+      let currentYoutubeNodeId = null; // Track current node for YouTube ring
+      let currentWikiTitle = null; // Track current wiki page title
+      let showPageAbortController = null;
 
-        // Prevent default context menu on canvas
-        app.view.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
+      // YouTube API Player Instance
+      let ytPlayer = null;
+
+      // --- Wiki Worker Setup ---
+      const wikiWorkerCode =
+        "self.onmessage = async (e) => {\n" +
+        "    const { reqId, title, displayTitle } = e.data;\n" +
+        "    try {\n" +
+        "        const params = new URLSearchParams({\n" +
+        "            action: 'parse',\n" +
+        "            page: title,\n" +
+        "            format: 'json',\n" +
+        "            prop: 'text',\n" +
+        "            mobileformat: 1,\n" +
+        "            origin: '*',\n" +
+        "        });\n" +
+        "        const res = await fetch('https://siivagunner.wiki/w/api.php?' + params.toString());\n" +
+        "        const data = await res.json();\n" +
+        "        if (data.parse && data.parse.text) {\n" +
+        "            let content = data.parse.text['*'];\n" +
+        "            content = content.replace(/src=[\"']\\//g, 'src=\"https://siivagunner.wiki/');\n" +
+        "            content = content.replace(/srcset=[\"']\\//g, 'srcset=\"https://siivagunner.wiki/');\n" +
+        "            content = content.replace(/, \\//g, ', https://siivagunner.wiki/');\n" +
+        "            content = content.replace(/loading=\"lazy\"/g, '');\n" +
+        "            content = content.replace(/decoding=\"async\"/g, '');\n" +
+        '            const html = \'<!DOCTYPE html><html><head><meta name="referrer" content="no-referrer"><base href="https://siivagunner.wiki/wiki/" target="_blank"><style> ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-track { background: #1e1e1e; } ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; } ::-webkit-scrollbar-thumb:hover { background: #555; } ::-webkit-scrollbar-corner { background: #1e1e1e; } body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; } img { max-width: 100%; height: auto; } a { color: #4a90e2; text-decoration: none; } a:hover { text-decoration: underline; } h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; } .mw-parser-output { max-width: 100%; } table, .infobox { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; } th { background-color: #333 !important; color: #eee !important; border-color: #444 !important; } td { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; } caption { color: #eee !important; } </style></head><body><h2>\' + displayTitle + \'</h2>\' + content + \'</body></html>\';\n' +
+        "            const blob = new Blob([html], { type: 'text/html' });\n" +
+        "            self.postMessage({ reqId, success: true, blob });\n" +
+        "        } else {\n" +
+        "            self.postMessage({ reqId, success: false, error: 'No content found' });\n" +
+        "        }\n" +
+        "    } catch (err) {\n" +
+        "        self.postMessage({ reqId, success: false, error: err.message });\n" +
+        "    }\n" +
+        "};";
+      const wikiWorkerBlob = new Blob([wikiWorkerCode], {
+        type: "application/javascript",
+      });
+      const wikiWorker = new Worker(URL.createObjectURL(wikiWorkerBlob));
+
+      const wikiWorkerCallbacks = new Map();
+      let wikiWorkerReqId = 0;
+
+      wikiWorker.onmessage = (e) => {
+        const { reqId, success, blob, error } = e.data;
+        if (wikiWorkerCallbacks.has(reqId)) {
+          wikiWorkerCallbacks.get(reqId)(e.data);
+          wikiWorkerCallbacks.delete(reqId);
+        }
+      };
+
+      function fetchWikiPage(title, displayTitle) {
+        return new Promise((resolve, reject) => {
+          const reqId = wikiWorkerReqId++;
+          wikiWorkerCallbacks.set(reqId, (data) => {
+            if (data.success) resolve(data.blob);
+            else reject(new Error(data.error || "Unknown worker error"));
+          });
+          wikiWorker.postMessage({ reqId, title, displayTitle });
         });
-        
-        // Layers
-        const linkGraphics = new PIXI.Graphics();
-        const nodeContainer = new PIXI.Container();
-        viewport.addChild(linkGraphics);
-        viewport.addChild(nodeContainer);
+      }
 
-        // Textures (Generated once for performance)
-        const TEXTURE_RES_MULT = 4;
-
-        function createCircleTexture(color, radius) {
-            const gr = new PIXI.Graphics();
-            gr.beginFill(color);
-            gr.lineStyle(1.5 * TEXTURE_RES_MULT, 0xffffff);
-            gr.drawCircle(0, 0, radius * TEXTURE_RES_MULT);
-            gr.endFill();
-            return app.renderer.generateTexture(gr);
+      async function showPage(node) {
+        if (showPageAbortController) {
+          showPageAbortController.abort();
         }
+        showPageAbortController = new AbortController();
+        const signal = showPageAbortController.signal;
 
-        function createMassiveTexture(radius) {
-            const gr = new PIXI.Graphics();
-            gr.beginFill(0x000000);
-            gr.lineStyle(2 * TEXTURE_RES_MULT, 0xffffff);
-            gr.drawCircle(0, 0, radius * TEXTURE_RES_MULT);
-            gr.endFill();
-            return app.renderer.generateTexture(gr);
-        }
-        
-        const ripTexture = createCircleTexture(0x4a90e2, NODE_RADIUS);
-        const catTexture = createCircleTexture(0xff9f43, NODE_RADIUS);
-        const massiveCatTexture = createMassiveTexture(NODE_RADIUS);
+        const title = node.id;
+        const displayTitle = title.replace(/^Category:/, "");
 
-        const MASSIVE_CATEGORIES = new Set([
-            "Category:Rips",
-            "Category:Mashups",
-            "Category:Renamed rips",
-            "Category:Melody changes",
-            "Category:Rips with sentence mixing",
-            "Category:Arrangements",
-            "Category:Rips with pitch-shifting",
-            "Category:Anonymous contributions",
-            "Category:Original remixes",
-            "Category:Videos",
-            "Category:YTPMV rips",
-            "Category:Playlists"
-        ]);
-        
-        // Vibrate textures not strictly needed with scale animation, but keeping for compatibility if referenced
-        const ripTextureVibrate = createCircleTexture(0x4a90e2, NODE_RADIUS + 1); 
-        const catTextureVibrate = createCircleTexture(0xff9f43, NODE_RADIUS + 1);
+        const showWiki =
+          document.getElementById("showWikiCheck").checked && !isInitialLoad;
+        const showYoutube =
+          document.getElementById("showYoutubeCheck").checked && !isInitialLoad;
 
-        // Map to keep track of sprites {nodeId: Sprite}
-        const nodeSprites = new Map();
-
-        // --- D3 Simulation ---
-        const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.id).distance(getLinkDistance).strength(0.05))
-            .force("charge", d3.forceManyBody().strength(-100))
-            .force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
-            .force("x", d3.forceX(window.innerWidth / 2).strength(0.05))
-            .force("y", d3.forceY(window.innerHeight / 2).strength(0.05));
-
-        function getLinkDistance(d) {
-            const source = d.source;
-            const target = d.target;
-            let dist = linkDistanceBase;
-            if (source.type === 'category' && target.type === 'category') dist *= 2.0;
-            else if (source.type === 'category' || target.type === 'category') dist *= 1.2;
-            else dist *= 0.8;
-            
-            const combinedDegree = (source.degree || 0) + (target.degree || 0);
-            if (combinedDegree > 5) dist += Math.min(combinedDegree * 2, 100);
-            return dist;
-        }
-
-
-
-        app.ticker.add((delta) => {
-            const t0 = performance.now();
-
-            if (isDebugMode && fpsCounter) {
-                // Smoothed FPS Counter
-                const elapsed = app.ticker.elapsedMS;
-                fpsHistory.push(elapsed);
-                if (fpsHistory.length > FPS_HISTORY_COUNT) {
-                    fpsHistory.shift();
-                }
-                const avgElapsed = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
-                const avgFps = 1000 / (avgElapsed || 1);
-                fpsCounter.innerText = `FPS: ${Math.round(avgFps)}`;
-            }
-
-            // Camera Tracking
-            if (trackingNode) {
-                const now = Date.now();
-                const elapsed = now - trackingStartTime;
-                let p = elapsed / TRACKING_DURATION;
-                
-                if (p >= 1) p = 1;
-                
-                const easedP = d3.easeCubicOut(p);
-                const opt = trackingTargetScreenPos;
-                const startT = trackingStartTransform;
-                const scale = startT.k; 
-                
-                const targetTx = opt.x - trackingNode.x * scale;
-                const targetTy = opt.y - trackingNode.y * scale;
-                
-                const currentTx = startT.x + (targetTx - startT.x) * easedP;
-                const currentTy = startT.y + (targetTy - startT.y) * easedP;
-                
-                zoom.transform(d3.select(app.view), new d3.ZoomTransform(scale, currentTx, currentTy));
-
-                if (p >= 1) {
-                    trackingNode = null;
-                }
-            }
-
-            const t1 = performance.now();
-
-            // Run Physics & Render
-            simulation.tick(); 
-            const now = Date.now();
-            linkGraphics.clear();
-            linkGraphics.lineStyle(1, 0x999999, 0.6);
-            links.forEach(l => {
-                let sx = l.source.x, sy = l.source.y;
-                let tx = l.target.x, ty = l.target.y;
-                if (l.source.vibrationStart) {
-                    const e = now - l.source.vibrationStart;
-                    const i = Math.min(e * 0.02, 5);
-                    sx += (Math.random() - 0.5) * i;
-                    sy += (Math.random() - 0.5) * i;
-                }
-                if (l.target.vibrationStart) {
-                    const e = now - l.target.vibrationStart;
-                    const i = Math.min(e * 0.02, 5);
-                    tx += (Math.random() - 0.5) * i;
-                    ty += (Math.random() - 0.5) * i;
-                }
-                linkGraphics.moveTo(sx, sy);
-                linkGraphics.lineTo(tx, ty);
+        // --- 1. Wiki Window (JSFrame) ---
+        if (showWiki) {
+          let needsWikiUpdate = false;
+          if (!wikiFrame) {
+            wikiFrame = jsFrame.create({
+              title: "Wiki: " + displayTitle,
+              left: 20,
+              top: 20,
+              width: 600,
+              height: 800,
+              movable: true,
+              resizable: true,
+              html: '<iframe id="wikiInnerFrame" name="wikiInnerFrame" style="background-color:#1e1e1e; width:100%; height:100%; border:none;"></iframe>',
             });
-            nodes.forEach(n => {
-                let sprite = nodeSprites.get(n.id);
-                if (!sprite) return; 
-                let dx = 0, dy = 0;
-                const degree = n.degree || 0;
-                const factor = n.type === 'category' ? 0.322 : 0.161;
-                const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
-                const finalScale = baseScale / TEXTURE_RES_MULT;
-                if (n.vibrationStart) {
-                    const elapsed = now - n.vibrationStart;
-                    const intensity = Math.min(elapsed * 0.02, 5);
-                    dx = (Math.random() - 0.5) * intensity;
-                    dy = (Math.random() - 0.5) * intensity;
-                    sprite.tint = 0xffcc00;
-                    sprite.scale.set(finalScale * 1.1);
-                    sprite.alpha = 1.0;
-                } else if (n.headShakeStart) {
-                    const elapsed = now - n.headShakeStart;
-                    if (elapsed < 500) {
-                        dx = Math.sin(elapsed * 0.05) * 3;
-                    } else {
-                        n.headShakeStart = null;
-                    }
-                    sprite.tint = n.visited ? 0xffffff : 0x999999;
-                    sprite.scale.set(finalScale);
-                    sprite.alpha = 1.0;
-                } else {
-                    sprite.tint = n.visited ? 0xffffff : 0x999999;
-                    sprite.scale.set(finalScale);
-                    sprite.alpha = 1.0;
-                }
-                sprite.x = n.x + dx;
-                sprite.y = n.y + dy;
+            wikiFrame.setTitleBarClassName("dark-titlebar", "dark-titlebar");
+            wikiFrame.on("closeButton", "click", (_frame) => {
+              _frame.closeFrame();
+              wikiFrame = null;
+              currentWikiTitle = null;
+              updateSelectionVisuals();
             });
+            wikiFrame.show();
+            needsWikiUpdate = true;
+          } else {
+            wikiFrame.setTitle("Wiki: " + displayTitle);
+            wikiFrame.show();
+            wikiFrame.requestFocus();
+            if (currentWikiTitle !== title) {
+              needsWikiUpdate = true;
+            }
+          }
 
-            const t2 = performance.now();
+          if (needsWikiUpdate) {
+            currentWikiTitle = title;
+            updateSelectionVisuals();
+            const wikiInner = document.getElementById("wikiInnerFrame");
+            if (wikiInner) {
+              const loadingHtml = `<div style="font-family:sans-serif;padding:20px;color:#ccc;background:#1e1e1e;height:100vh;">Loading ${displayTitle}...</div>`;
+              const loadingBlob = new Blob([loadingHtml], {
+                type: "text/html",
+              });
+              const loadingUrl = URL.createObjectURL(loadingBlob);
+              if (wikiInner.dataset.blobUrl) {
+                URL.revokeObjectURL(wikiInner.dataset.blobUrl);
+              }
+              wikiInner.src = loadingUrl;
+              wikiInner.dataset.blobUrl = loadingUrl;
+            }
 
-            if (isDebugMode) {
-                timings.camera += (t1 - t0);
-                timings.render += (t2 - t1);
-                frameCount++;
-                if (frameCount % 60 === 0) {
-                    console.log(`Avg Timings (ms): Camera: ${(timings.camera / 60).toFixed(2)}, Render: ${(timings.render / 60).toFixed(2)}`);
-                    timings = { camera: 0, render: 0 };
+            (async () => {
+              try {
+                const blob = await fetchWikiPage(title, displayTitle);
+                if (signal.aborted) return;
+                const wikiInner = document.getElementById("wikiInnerFrame");
+                if (wikiInner) {
+                  const contentUrl = URL.createObjectURL(blob);
+                  if (wikiInner.dataset.blobUrl) {
+                    URL.revokeObjectURL(wikiInner.dataset.blobUrl);
+                  }
+                  wikiInner.src = contentUrl;
+                  wikiInner.dataset.blobUrl = contentUrl;
                 }
+              } catch (e) {
+                if (e.name === "AbortError") return;
+                console.error("Error from Wiki Worker:", e);
+                const wikiInner = document.getElementById("wikiInnerFrame");
+                if (wikiInner) {
+                  const errorHtml = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content. See console.</div>`;
+                  const errorBlob = new Blob([errorHtml], {
+                    type: "text/html",
+                  });
+                  const errorUrl = URL.createObjectURL(errorBlob);
+                  if (wikiInner.dataset.blobUrl) {
+                    URL.revokeObjectURL(wikiInner.dataset.blobUrl);
+                  }
+                  wikiInner.src = errorUrl;
+                  wikiInner.dataset.blobUrl = errorUrl;
+                }
+              }
+            })();
+          }
+        } else if (wikiFrame) {
+          wikiFrame.close();
+        }
+
+        // --- 2. YouTube Window (JSFrame) ---
+        if (node.type === "rip" && showYoutube) {
+          currentYoutubeNodeId = node.id;
+          updateSelectionVisuals();
+          try {
+            const rawData = await fetchApi(
+              {
+                action: "query",
+                prop: "revisions",
+                titles: title,
+                rvprop: "content",
+                format: "json",
+                rvslots: "main",
+              },
+              signal,
+            );
+            if (signal.aborted) return;
+            const pages = rawData.query.pages;
+            const pageId = Object.keys(pages)[0];
+            let videoId = null;
+            if (pageId !== "-1") {
+              const page = pages[pageId];
+              let rawContent = "";
+              if (page.revisions && page.revisions[0]) {
+                rawContent = page.revisions[0].slots
+                  ? page.revisions[0].slots.main["*"]
+                  : page.revisions[0]["*"];
+              }
+              const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(
+                rawContent,
+              );
+              if (idMatch) videoId = idMatch[1];
+              else {
+                const linkMatch =
+                  /\|\s*(?:link|url)\s*=\s*(?:\[)?(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(
+                    rawContent,
+                  );
+                if (linkMatch) videoId = linkMatch[1];
+              }
             }
-        });
-
-        // --- Popup Logic ---
-        const jsFrame = new JSFrame();
-        let wikiFrame = null;
-        let youtubeFrame = null;
-        let currentYoutubeVideoId = null; // Track current video in YouTube frame
-        let currentYoutubeNodeId = null; // Track current node for YouTube ring
-        let currentWikiTitle = null; // Track current wiki page title
-        let showPageAbortController = null;
-        
-        // YouTube API Player Instance
-        let ytPlayer = null;
-
-        // --- Wiki Worker Setup ---
-        const wikiWorkerCode = 'self.onmessage = async (e) => {\n' +
-'    const { reqId, title, displayTitle } = e.data;\n' +
-'    try {\n' +
-'        const params = new URLSearchParams({\n' +
-'            action: \'parse\',\n' +
-'            page: title,\n' +
-'            format: \'json\',\n' +
-'            prop: \'text\',\n' +
-'            mobileformat: 1,\n' +
-'            origin: \'*\',\n' +
-'        });\n' +
-'        const res = await fetch(\'https://siivagunner.wiki/w/api.php?\' + params.toString());\n' +
-'        const data = await res.json();\n' +
-'        if (data.parse && data.parse.text) {\n' +
-'            let content = data.parse.text[\'*\'];\n' +
-'            content = content.replace(/src=["\']\\//g, \'src="https://siivagunner.wiki/\');\n' +
-'            content = content.replace(/srcset=["\']\\//g, \'srcset="https://siivagunner.wiki/\');\n' +
-'            content = content.replace(/, \\//g, \', https://siivagunner.wiki/\');\n' +
-'            content = content.replace(/loading="lazy"/g, \'\');\n' +
-'            content = content.replace(/decoding="async"/g, \'\');\n' +
-'            const html = \'<!DOCTYPE html><html><head><meta name="referrer" content="no-referrer"><base href="https://siivagunner.wiki/wiki/" target="_blank"><style> ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-track { background: #1e1e1e; } ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; } ::-webkit-scrollbar-thumb:hover { background: #555; } ::-webkit-scrollbar-corner { background: #1e1e1e; } body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; } img { max-width: 100%; height: auto; } a { color: #4a90e2; text-decoration: none; } a:hover { text-decoration: underline; } h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; } .mw-parser-output { max-width: 100%; } table, .infobox { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; } th { background-color: #333 !important; color: #eee !important; border-color: #444 !important; } td { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; } caption { color: #eee !important; } </style></head><body><h2>\' + displayTitle + \'</h2>\' + content + \'</body></html>\';\n' +
-'            const blob = new Blob([html], { type: \'text/html\' });\n' +
-'            self.postMessage({ reqId, success: true, blob });\n' +
-'        } else {\n' +
-'            self.postMessage({ reqId, success: false, error: \'No content found\' });\n' +
-'        }\n' +
-'    } catch (err) {\n' +
-'        self.postMessage({ reqId, success: false, error: err.message });\n' +
-'    }\n' +
-'};';
-        const wikiWorkerBlob = new Blob([wikiWorkerCode], { type: 'application/javascript' });
-        const wikiWorker = new Worker(URL.createObjectURL(wikiWorkerBlob));
-        
-        const wikiWorkerCallbacks = new Map();
-        let wikiWorkerReqId = 0;
-
-        wikiWorker.onmessage = (e) => {
-            const { reqId, success, blob, error } = e.data;
-            if (wikiWorkerCallbacks.has(reqId)) {
-                wikiWorkerCallbacks.get(reqId)(e.data);
-                wikiWorkerCallbacks.delete(reqId);
-            }
-        };
-
-        function fetchWikiPage(title, displayTitle) {
-            return new Promise((resolve, reject) => {
-                const reqId = wikiWorkerReqId++;
-                wikiWorkerCallbacks.set(reqId, (data) => {
-                    if (data.success) resolve(data.blob);
-                    else reject(new Error(data.error || 'Unknown worker error'));
+            if (videoId) {
+              if (!youtubeFrame) {
+                youtubeFrame = jsFrame.create({
+                  title: "YouTube Player",
+                  left: 640,
+                  top: 20,
+                  width: 480,
+                  height: 320,
+                  movable: true,
+                  resizable: true,
+                  html: '<div id="ytPlayer"></div>',
                 });
-                wikiWorker.postMessage({ reqId, title, displayTitle });
-            });
-        }
-
-        async function showPage(node) {
-            if (showPageAbortController) {
-                showPageAbortController.abort();
-            }
-            showPageAbortController = new AbortController();
-            const signal = showPageAbortController.signal;
-
-            const title = node.id;
-            const displayTitle = title.replace(/^Category:/, '');
-
-            const showWiki = document.getElementById('showWikiCheck').checked && !isInitialLoad;
-            const showYoutube = document.getElementById('showYoutubeCheck').checked && !isInitialLoad;
-
-            // --- 1. Wiki Window (JSFrame) ---
-            if (showWiki) {
-                let needsWikiUpdate = false;
-                if (!wikiFrame) {
-                    wikiFrame = jsFrame.create({
-                        title: 'Wiki: ' + displayTitle,
-                        left: 20, top: 20, width: 600, height: 800,
-                        movable: true, resizable: true,
-                        html: '<iframe id="wikiInnerFrame" name="wikiInnerFrame" style="background-color:#1e1e1e; width:100%; height:100%; border:none;"></iframe>'
-                    });
-                    wikiFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
-                    wikiFrame.on('closeButton', 'click', (_frame) => {
-                        _frame.closeFrame();
-                        wikiFrame = null; 
-                        currentWikiTitle = null; 
-                        updateSelectionVisuals();
-                    });
-                    wikiFrame.show();
-                    needsWikiUpdate = true;
-                } else {
-                    wikiFrame.setTitle('Wiki: ' + displayTitle);
-                    wikiFrame.show();
-                    wikiFrame.requestFocus();
-                    if (currentWikiTitle !== title) {
-                        needsWikiUpdate = true;
-                    }
-                }
-
-                if (needsWikiUpdate) {
-                    currentWikiTitle = title;
-                    updateSelectionVisuals();
-                    const wikiInner = document.getElementById('wikiInnerFrame');
-                    if (wikiInner) {
-                        const loadingHtml = `<div style="font-family:sans-serif;padding:20px;color:#ccc;background:#1e1e1e;height:100vh;">Loading ${displayTitle}...</div>`;
-                        const loadingBlob = new Blob([loadingHtml], { type: 'text/html' });
-                        const loadingUrl = URL.createObjectURL(loadingBlob);
-                        if (wikiInner.dataset.blobUrl) {
-                            URL.revokeObjectURL(wikiInner.dataset.blobUrl);
-                        }
-                        wikiInner.src = loadingUrl;
-                        wikiInner.dataset.blobUrl = loadingUrl;
-                    }
-
-                    (async () => {
-                        try {
-                            const blob = await fetchWikiPage(title, displayTitle);
-                            if (signal.aborted) return;
-                            const wikiInner = document.getElementById('wikiInnerFrame');
-                            if (wikiInner) {
-                                const contentUrl = URL.createObjectURL(blob);
-                                if (wikiInner.dataset.blobUrl) {
-                                    URL.revokeObjectURL(wikiInner.dataset.blobUrl);
-                                }
-                                wikiInner.src = contentUrl;
-                                wikiInner.dataset.blobUrl = contentUrl;
-                            }
-                        } catch (e) {
-                            if (e.name === 'AbortError') return;
-                            console.error("Error from Wiki Worker:", e);
-                            const wikiInner = document.getElementById('wikiInnerFrame');
-                            if(wikiInner) {
-                                 const errorHtml = `<div style="color:#ff6b6b;padding:20px;background:#1e1e1e;height:100vh;">Error loading content. See console.</div>`;
-                                 const errorBlob = new Blob([errorHtml], { type: 'text/html' });
-                                 const errorUrl = URL.createObjectURL(errorBlob);
-                                 if (wikiInner.dataset.blobUrl) {
-                                    URL.revokeObjectURL(wikiInner.dataset.blobUrl);
-                                 }
-                                 wikiInner.src = errorUrl;
-                                 wikiInner.dataset.blobUrl = errorUrl;
-                            }
-                        }
-                    })();
-                }
-            } else if (wikiFrame) {
-                wikiFrame.close();
-            }
-
-            // --- 2. YouTube Window (JSFrame) ---
-            if (node.type === 'rip' && showYoutube) {
-                currentYoutubeNodeId = node.id;
-                updateSelectionVisuals();
-                try {
-                    const rawData = await fetchApi({
-                        action: 'query',
-                        prop: 'revisions',
-                        titles: title,
-                        rvprop: 'content',
-                        format: 'json',
-                        rvslots: 'main'
-                    }, signal);
-                    if (signal.aborted) return;
-                    const pages = rawData.query.pages;
-                    const pageId = Object.keys(pages)[0];
-                    let videoId = null;
-                    if (pageId !== "-1") {
-                        const page = pages[pageId];
-                        let rawContent = "";
-                        if (page.revisions && page.revisions[0]) {
-                            rawContent = page.revisions[0].slots ? page.revisions[0].slots.main['*'] : page.revisions[0]['*'];
-                        }
-                        const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(rawContent);
-                        if (idMatch) videoId = idMatch[1];
-                        else {
-                            const linkMatch = /\|\s*(?:link|url)\s*=\s*(?:\[)?(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/))?([a-zA-Z0-9_-]+)/i.exec(rawContent);
-                            if (linkMatch) videoId = linkMatch[1];
-                        }
-                    }
-                    if (videoId) {
-                        if (!youtubeFrame) {
-                            youtubeFrame = jsFrame.create({
-                                title: 'YouTube Player',
-                                left: 640, top: 20, width: 480, height: 320,
-                                movable: true, resizable: true,
-                                html: '<div id="ytPlayer"></div>'
-                            });
-                            youtubeFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
-                            youtubeFrame.on('closeButton', 'click', (_frame) => {
-                                _frame.closeFrame();
-                                youtubeFrame = null; 
-                                if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
-                                currentYoutubeVideoId = null;
-                                currentYoutubeNodeId = null;
-                                updateSelectionVisuals();
-                            });
-                            youtubeFrame.show();
-                            if (window.YT && window.YT.Player) {
-                                ytPlayer = new YT.Player('ytPlayer', {
-                                    height: '100%',
-                                    width: '100%',
-                                    videoId: videoId,
-                                    playerVars: { 'autoplay': 1, 'origin': window.location.origin },
-                                    events: { 'onStateChange': onPlayerStateChange, 'onError': onPlayerError }
-                                });
-                            }
-                            currentYoutubeVideoId = videoId;
-                        } else {
-                            youtubeFrame.show();
-                            youtubeFrame.requestFocus();
-                            if (currentYoutubeVideoId !== videoId && ytPlayer && ytPlayer.loadVideoById) {
-                                ytPlayer.loadVideoById(videoId);
-                                currentYoutubeVideoId = videoId;
-                            }
-                        }
-                    } else if (document.getElementById('autoplayUnvisitedCheck').checked) {
-                        console.log("No video ID found, skipping...");
-                        setTimeout(playNextRandomRip, 2000);
-                    }
-                } catch (e) {
-                    if (e.name !== 'AbortError') console.error("Error finding video:", e);
-                    if (document.getElementById('autoplayUnvisitedCheck').checked) {
-                         setTimeout(playNextRandomRip, 2000);
-                    }
-                }
-            } else if (youtubeFrame && !showYoutube) {
-                youtubeFrame.close();
-            }
-        }
-
-        function createRingGraphics(color, layerIndex) {
-            const gr = new PIXI.Graphics();
-            const r = NODE_RADIUS * TEXTURE_RES_MULT; 
-            // Layer 0 (Wiki): Inner
-            // Layer 1 (YouTube): Outer
-            const gap = (6 + (layerIndex * 5)) * TEXTURE_RES_MULT; 
-            const thickness = 3 * TEXTURE_RES_MULT;
-            
-            gr.lineStyle(thickness, color);
-            gr.drawCircle(0, 0, r + gap);
-            return gr;
-        }
-
-        function updateSelectionVisuals() {
-            console.log("Updating visuals. Wiki:", currentWikiTitle, "YT:", currentYoutubeNodeId);
-            nodeSprites.forEach((sprite, id) => {
-                if (sprite.wikiRing) sprite.wikiRing.visible = (id === currentWikiTitle);
-                if (sprite.ytRing) sprite.ytRing.visible = (id === currentYoutubeNodeId);
-            });
-        }
-
-        // --- Sync Graph Data to Pixi ---
-        function updatePixiObjects() {
-            // Remove sprites for deleted nodes
-            const currentIds = new Set(nodes.map(n => n.id));
-            for (const [id, sprite] of nodeSprites) {
-                if (!currentIds.has(id)) {
-                    nodeContainer.removeChild(sprite);
-                    sprite.destroy(); // memory cleanup
-                    nodeSprites.delete(id);
-                }
-            }
-
-            // Add sprites for new nodes
-            nodes.forEach(n => {
-                if (!nodeSprites.has(n.id)) {
-                    let tex = n.type === 'category' ? catTexture : ripTexture;
-                    if (n.isMassive) tex = massiveCatTexture;
-
-                    const sprite = new PIXI.Sprite(tex);
-                    sprite.anchor.set(0.5);
-                    sprite.eventMode = 'static'; // Interactive
-                    sprite.cursor = 'pointer';
-                    
-                    // Data reference
-                    sprite.nodeData = n; 
-
-                    // Selection Rings
-                    const wikiRing = createRingGraphics(0x0088FF, 0);
-                    wikiRing.visible = (n.id === currentWikiTitle);
-                    sprite.addChild(wikiRing);
-                    sprite.wikiRing = wikiRing;
-
-                    const ytRing = createRingGraphics(0xFF0000, 1);
-                    ytRing.visible = (n.id === currentYoutubeNodeId);
-                    sprite.addChild(ytRing);
-                    sprite.ytRing = ytRing;
-
-                    // Interactions
-                    sprite.on('pointerdown', onDragStart);
-                    sprite.on('pointerup', onDragEnd);
-                    sprite.on('pointerupoutside', onDragEnd);
-                    sprite.on('globalmousemove', onDragMove); // Pixi standard drag
-                    
-                    sprite.on('click', (e) => {
-                        if (dragState.didMove) { // If there was movement, it was a drag, so don't activate
-                            dragState.didMove = false; // Reset for next interaction
-                            return;
-                        }
-
-                        if (n.isMassive) {
-                            n.headShakeStart = Date.now();
-                            return;
-                        }
-
-                        showPage(n);
-                        expandNode(n);
-                    });
-                    
-                    sprite.on('rightclick', (e) => {
-                         handleRightClick(n);
-                    });
-
-                    sprite.on('pointerover', (e) => {
-                        const globalPos = sprite.getGlobalPosition();
-                        tooltip.style.display = 'block';
-                        tooltip.innerText = n.id.replace(/^Category:/, '');
-                        // HTML tooltip positioning
-                        tooltip.style.left = (globalPos.x + 15) + 'px';
-                        tooltip.style.top = (globalPos.y - 10) + 'px';
-                    });
-
-                    sprite.on('pointerout', () => {
-                        tooltip.style.display = 'none';
-                    });
-
-                    nodeContainer.addChild(sprite);
-                    nodeSprites.set(n.id, sprite);
-                    
-                    // Set initial position
-                    sprite.x = n.x;
-                    sprite.y = n.y;
-                }
-            });
-
-            // Update Counts
-            document.getElementById('nodeCount').innerText = `Nodes: ${nodes.length}`;
-        }
-
-        // --- Interaction Handling (Zoom/Pan & Drag) ---
-        
-        // We use D3 Zoom on the Canvas DOM element to control the Pixi Viewport
-        const zoom = d3.zoom()
-            .scaleExtent([0.1, 8])
-            .on("zoom", (event) => {
-                if (event.sourceEvent) {
-                    trackingNode = null; // Cancel auto-tracking on user input
-                }
-                viewport.scale.set(event.transform.k);
-                viewport.position.set(event.transform.x, event.transform.y);
-            });
-        
-        d3.select(app.view).call(zoom)
-            .on("dblclick.zoom", null);
-
-        // Drag Logic (Pixi)
-        let dragState = { isDragging: false, data: null, sprite: null, didMove: false, initialPointerPos: null };
-        const DRAG_THRESHOLD = 5; // Pixels to move before considered a drag
-
-        function onDragStart(event) {
-            simulation.alphaTarget(0.3).restart();
-            this.nodeData.fx = this.nodeData.x;
-            this.nodeData.fy = this.nodeData.y;
-            
-            dragState.isDragging = true;
-            dragState.data = event.data;
-            dragState.sprite = this;
-            dragState.didMove = false; // Reset for this drag interaction
-            dragState.initialPointerPos = event.data.global.clone(); // Store initial position
-
-            d3.select(app.view).on(".zoom", null);
-        }
-
-        function onDragEnd() {
-            if (!dragState.isDragging) return;
-            
-            simulation.alphaTarget(0);
-            if (dragState.sprite && dragState.sprite.nodeData) {
-                dragState.sprite.nodeData.fx = null;
-                dragState.sprite.nodeData.fy = null;
-            }
-            
-            dragState.isDragging = false;
-            dragState.data = null;
-            dragState.sprite = null;
-            dragState.initialPointerPos = null; // Clear initial position
-
-            // Re-enable zoom
-            d3.select(app.view).call(zoom).on("dblclick.zoom", null);
-        }
-
-        function onDragMove() {
-            if (dragState.isDragging && dragState.sprite) {
-                const currentPointerPos = dragState.data.global;
-                // Check if pointer has moved significantly from initial position
-                const distance = Math.sqrt(
-                    Math.pow(currentPointerPos.x - dragState.initialPointerPos.x, 2) +
-                    Math.pow(currentPointerPos.y - dragState.initialPointerPos.y, 2)
+                youtubeFrame.setTitleBarClassName(
+                  "dark-titlebar",
+                  "dark-titlebar",
                 );
-                if (distance > DRAG_THRESHOLD) { 
-                    dragState.didMove = true;
+                youtubeFrame.on("closeButton", "click", (_frame) => {
+                  _frame.closeFrame();
+                  youtubeFrame = null;
+                  if (ytPlayer) {
+                    ytPlayer.destroy();
+                    ytPlayer = null;
+                  }
+                  currentYoutubeVideoId = null;
+                  currentYoutubeNodeId = null;
+                  updateSelectionVisuals();
+                });
+                youtubeFrame.show();
+                if (window.YT && window.YT.Player) {
+                  ytPlayer = new YT.Player("ytPlayer", {
+                    height: "100%",
+                    width: "100%",
+                    videoId: videoId,
+                    playerVars: { autoplay: 1, origin: window.location.origin },
+                    events: {
+                      onStateChange: onPlayerStateChange,
+                      onError: onPlayerError,
+                    },
+                  });
                 }
-
-                const newPosition = dragState.data.getLocalPosition(viewport);
-                dragState.sprite.nodeData.fx = newPosition.x;
-                dragState.sprite.nodeData.fy = newPosition.y;
+                currentYoutubeVideoId = videoId;
+              } else {
+                youtubeFrame.show();
+                youtubeFrame.requestFocus();
+                if (
+                  currentYoutubeVideoId !== videoId &&
+                  ytPlayer &&
+                  ytPlayer.loadVideoById
+                ) {
+                  ytPlayer.loadVideoById(videoId);
+                  currentYoutubeVideoId = videoId;
+                }
+              }
+            } else if (
+              document.getElementById("autoplayUnvisitedCheck").checked
+            ) {
+              console.log("No video ID found, skipping...");
+              setTimeout(playNextRandomRip, 2000);
             }
+          } catch (e) {
+            if (e.name !== "AbortError")
+              console.error("Error finding video:", e);
+            if (document.getElementById("autoplayUnvisitedCheck").checked) {
+              setTimeout(playNextRandomRip, 2000);
+            }
+          }
+        } else if (youtubeFrame && !showYoutube) {
+          youtubeFrame.close();
         }
-        // --- Core Logic (Same as before) ---
-        
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                abortExpansion = true;
-                globalAbortController.abort();
-                globalAbortController = new AbortController();
-                console.log("Expansion aborted by user.");
-            }
+      }
+
+      function createRingGraphics(color, layerIndex) {
+        const gr = new PIXI.Graphics();
+        const r = NODE_RADIUS * TEXTURE_RES_MULT;
+        // Layer 0 (Wiki): Inner
+        // Layer 1 (YouTube): Outer
+        const gap = (6 + layerIndex * 5) * TEXTURE_RES_MULT;
+        const thickness = 3 * TEXTURE_RES_MULT;
+
+        gr.lineStyle(thickness, color);
+        gr.drawCircle(0, 0, r + gap);
+        return gr;
+      }
+
+      function updateSelectionVisuals() {
+        console.log(
+          "Updating visuals. Wiki:",
+          currentWikiTitle,
+          "YT:",
+          currentYoutubeNodeId,
+        );
+        nodeSprites.forEach((sprite, id) => {
+          if (sprite.wikiRing)
+            sprite.wikiRing.visible = id === currentWikiTitle;
+          if (sprite.ytRing)
+            sprite.ytRing.visible = id === currentYoutubeNodeId;
+        });
+      }
+
+      // --- Sync Graph Data to Pixi ---
+      function updatePixiObjects() {
+        // Remove sprites for deleted nodes
+        const currentIds = new Set(nodes.map((n) => n.id));
+        for (const [id, sprite] of nodeSprites) {
+          if (!currentIds.has(id)) {
+            nodeContainer.removeChild(sprite);
+            sprite.destroy(); // memory cleanup
+            nodeSprites.delete(id);
+          }
+        }
+
+        // Add sprites for new nodes
+        nodes.forEach((n) => {
+          if (!nodeSprites.has(n.id)) {
+            let tex = n.type === "category" ? catTexture : ripTexture;
+            if (n.isMassive) tex = massiveCatTexture;
+
+            const sprite = new PIXI.Sprite(tex);
+            sprite.anchor.set(0.5);
+            sprite.eventMode = "static"; // Interactive
+            sprite.cursor = "pointer";
+
+            // Data reference
+            sprite.nodeData = n;
+
+            // Selection Rings
+            const wikiRing = createRingGraphics(0x0088ff, 0);
+            wikiRing.visible = n.id === currentWikiTitle;
+            sprite.addChild(wikiRing);
+            sprite.wikiRing = wikiRing;
+
+            const ytRing = createRingGraphics(0xff0000, 1);
+            ytRing.visible = n.id === currentYoutubeNodeId;
+            sprite.addChild(ytRing);
+            sprite.ytRing = ytRing;
+
+            // Interactions
+            sprite.on("pointerdown", onDragStart);
+            sprite.on("pointerup", onDragEnd);
+            sprite.on("pointerupoutside", onDragEnd);
+            sprite.on("globalmousemove", onDragMove); // Pixi standard drag
+
+            sprite.on("click", (e) => {
+              if (dragState.didMove) {
+                // If there was movement, it was a drag, so don't activate
+                dragState.didMove = false; // Reset for next interaction
+                return;
+              }
+
+              if (n.isMassive) {
+                n.headShakeStart = Date.now();
+                return;
+              }
+
+              showPage(n);
+              expandNode(n);
+            });
+
+            sprite.on("rightclick", (e) => {
+              handleRightClick(n);
+            });
+
+            sprite.on("pointerover", (e) => {
+              const globalPos = sprite.getGlobalPosition();
+              tooltip.style.display = "block";
+              tooltip.innerText = n.id.replace(/^Category:/, "");
+              // HTML tooltip positioning
+              tooltip.style.left = globalPos.x + 15 + "px";
+              tooltip.style.top = globalPos.y - 10 + "px";
+            });
+
+            sprite.on("pointerout", () => {
+              tooltip.style.display = "none";
+            });
+
+            nodeContainer.addChild(sprite);
+            nodeSprites.set(n.id, sprite);
+
+            // Set initial position
+            sprite.x = n.x;
+            sprite.y = n.y;
+          }
         });
 
-        async function fetchApi(params, signal) {
-            const url = new URL(API_BASE);
-            url.search = new URLSearchParams({ ...params, origin: '*' });
-            try {
-                const response = await fetch(url, { signal });
-                if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-                return response.json();
-            } catch (e) {
-                if (e.name === 'AbortError') {
-                    console.log("Fetch aborted.");
-                } else {
-                    console.error("Fetch failed. This could be a network issue, CORS, or a browser extension blocking the request.", e);
-                }
-                throw e; // Re-throw so the caller knows it failed.
-            }
+        // Update Counts
+        document.getElementById("nodeCount").innerText =
+          `Nodes: ${nodes.length}`;
+      }
+
+      // --- Interaction Handling (Zoom/Pan & Drag) ---
+
+      // We use D3 Zoom on the Canvas DOM element to control the Pixi Viewport
+      const zoom = d3
+        .zoom()
+        .scaleExtent([0.1, 8])
+        .on("zoom", (event) => {
+          if (event.sourceEvent) {
+            trackingNode = null; // Cancel auto-tracking on user input
+          }
+          viewport.scale.set(event.transform.k);
+          viewport.position.set(event.transform.x, event.transform.y);
+        });
+
+      d3.select(app.view).call(zoom).on("dblclick.zoom", null);
+
+      // Drag Logic (Pixi)
+      let dragState = {
+        isDragging: false,
+        data: null,
+        sprite: null,
+        didMove: false,
+        initialPointerPos: null,
+      };
+      const DRAG_THRESHOLD = 5; // Pixels to move before considered a drag
+
+      function onDragStart(event) {
+        simulation.alphaTarget(0.3);
+        this.nodeData.fx = this.nodeData.x;
+        this.nodeData.fy = this.nodeData.y;
+
+        dragState.isDragging = true;
+        dragState.data = event.data;
+        dragState.sprite = this;
+        dragState.didMove = false; // Reset for this drag interaction
+        dragState.initialPointerPos = event.data.global.clone(); // Store initial position
+
+        d3.select(app.view).on(".zoom", null);
+      }
+
+      function onDragEnd() {
+        if (!dragState.isDragging) return;
+
+        simulation.alphaTarget(0);
+        if (dragState.sprite && dragState.sprite.nodeData) {
+          dragState.sprite.nodeData.fx = null;
+          dragState.sprite.nodeData.fy = null;
         }
 
-        async function getPageCategories(title, signal) {
-            const data = await fetchApi({
-                action: 'query', format: 'json', prop: 'categories', titles: title, cllimit: 'max', clshow: '!hidden'
-            }, signal);
-            if (!data.query || !data.query.pages) return null; // Error/Missing
+        dragState.isDragging = false;
+        dragState.data = null;
+        dragState.sprite = null;
+        dragState.initialPointerPos = null; // Clear initial position
+
+        // Re-enable zoom
+        d3.select(app.view).call(zoom).on("dblclick.zoom", null);
+      }
+
+      function onDragMove() {
+        if (dragState.isDragging && dragState.sprite) {
+          const currentPointerPos = dragState.data.global;
+          // Check if pointer has moved significantly from initial position
+          const distance = Math.sqrt(
+            Math.pow(currentPointerPos.x - dragState.initialPointerPos.x, 2) +
+              Math.pow(currentPointerPos.y - dragState.initialPointerPos.y, 2),
+          );
+          if (distance > DRAG_THRESHOLD) {
+            dragState.didMove = true;
+          }
+
+          const newPosition = dragState.data.getLocalPosition(viewport);
+          dragState.sprite.nodeData.fx = newPosition.x;
+          dragState.sprite.nodeData.fy = newPosition.y;
+        }
+      }
+      // --- Core Logic (Same as before) ---
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          abortExpansion = true;
+          globalAbortController.abort();
+          globalAbortController = new AbortController();
+          console.log("Expansion aborted by user.");
+        }
+      });
+
+      async function fetchApi(params, signal) {
+        const url = new URL(API_BASE);
+        url.search = new URLSearchParams({ ...params, origin: "*" });
+        try {
+          const response = await fetch(url, { signal });
+          if (!response.ok)
+            throw new Error(`API Error: ${response.statusText}`);
+          return response.json();
+        } catch (e) {
+          if (e.name === "AbortError") {
+            console.log("Fetch aborted.");
+          } else {
+            console.error(
+              "Fetch failed. This could be a network issue, CORS, or a browser extension blocking the request.",
+              e,
+            );
+          }
+          throw e; // Re-throw so the caller knows it failed.
+        }
+      }
+
+      async function getPageCategories(title, signal) {
+        const data = await fetchApi(
+          {
+            action: "query",
+            format: "json",
+            prop: "categories",
+            titles: title,
+            cllimit: "max",
+            clshow: "!hidden",
+          },
+          signal,
+        );
+        if (!data.query || !data.query.pages) return null; // Error/Missing
+        const pages = data.query.pages;
+        const pageId = Object.keys(pages)[0];
+        if (pageId === "-1") return null; // Page doesn't exist
+        return (pages[pageId].categories || []).map((c) => ({
+          title: c.title,
+          ns: c.ns,
+        }));
+      }
+
+      async function getCategoryMembers(title, signal) {
+        let allMembers = [];
+        let continueToken = null;
+
+        do {
+          const params = {
+            action: "query",
+            format: "json",
+            list: "categorymembers",
+            cmtitle: title,
+            cmlimit: "max", // Usually 500
+            cmnamespace: "0|14",
+          };
+
+          if (continueToken) {
+            params.cmcontinue = continueToken;
+          }
+
+          const data = await fetchApi(params, signal);
+
+          if (data.query && data.query.categorymembers) {
+            allMembers = allMembers.concat(data.query.categorymembers);
+          }
+
+          if (data.continue && data.continue.cmcontinue) {
+            continueToken = data.continue.cmcontinue;
+          } else {
+            continueToken = null;
+          }
+        } while (continueToken);
+
+        return allMembers.map((c) => ({ title: c.title, ns: c.ns }));
+      }
+
+      function addNode(id, type, x, y) {
+        let existing = nodes.find((n) => n.id === id);
+        if (existing) return existing;
+        const isMassive = MASSIVE_CATEGORIES.has(id);
+        const newNode = {
+          id: id,
+          type: type,
+          x: x || 0,
+          y: y || 0,
+          degree: 0,
+          visited: false,
+          isMassive: isMassive,
+        };
+        nodes.push(newNode);
+        return newNode;
+      }
+
+      function addLink(sourceId, targetId) {
+        const exists = links.some(
+          (l) =>
+            (l.source.id === sourceId && l.target.id === targetId) ||
+            (l.source === sourceId && l.target === targetId),
+        );
+        if (!exists) {
+          links.push({ source: sourceId, target: targetId });
+          const sNode = nodes.find((n) => n.id === sourceId);
+          const tNode = nodes.find((n) => n.id === targetId);
+          if (sNode) sNode.degree++;
+          if (tNode) tNode.degree++;
+          return true;
+        }
+        return false;
+      }
+
+      function restartSimulation() {
+        simulation.nodes(nodes);
+        simulation.force("link").links(links);
+        simulation.alpha(1);
+        updatePixiObjects();
+      }
+
+      async function expandNode(d) {
+        if (d.expanding) return;
+        d.expanding = true;
+        d.visited = true; // Mark as visited/expanded
+        d.vibrationStart = Date.now();
+
+        // Capture the current signal for this expansion process
+        const signal = globalAbortController.signal;
+
+        try {
+          let newNeighbors = [];
+          if (d.type === "rip") {
+            const categories = await getPageCategories(d.id, signal);
+            if (categories === null) {
+              // Page does not exist -> Pop out of existence
+              nodes = nodes.filter((n) => n.id !== d.id);
+              links = links.filter(
+                (l) =>
+                  (l.source.id || l.source) !== d.id &&
+                  (l.target.id || l.target) !== d.id,
+              );
+              restartSimulation();
+              return;
+            }
+            newNeighbors = categories.map((cat) => ({
+              ...cat,
+              direction: "parent",
+            }));
+          } else {
+            // Fetch members (children)
+            const members = await getCategoryMembers(d.id, signal);
+            const memberNeighbors = members.map((mem) => ({
+              ...mem,
+              direction: "child",
+            }));
+
+            // Fetch parent categories
+            const parents = await getPageCategories(d.id, signal);
+            const parentNeighbors = (parents || []).map((p) => ({
+              ...p,
+              direction: "parent",
+            }));
+
+            newNeighbors = [...memberNeighbors, ...parentNeighbors];
+          }
+
+          d.vibrationStart = null;
+          if (signal.aborted) return;
+
+          const angleStep = (2 * Math.PI) / (newNeighbors.length || 1);
+
+          let currentDelay = 20;
+          let nodesPerBatch = 1;
+
+          for (let i = 0; i < newNeighbors.length; ) {
+            if (signal.aborted) break;
+
+            let batchAdded = false;
+
+            // Process batch
+            for (
+              let b = 0;
+              b < nodesPerBatch && i < newNeighbors.length;
+              b++, i++
+            ) {
+              const n = newNeighbors[i];
+              const type = n.ns === 14 ? "category" : "rip";
+
+              const angle = Math.random() * 2 * Math.PI;
+              const dist = 50 + Math.random() * 50;
+              const nx = d.x + Math.cos(angle) * dist;
+              const ny = d.y + Math.sin(angle) * dist;
+
+              const nodeObj = addNode(n.title, type, nx, ny);
+
+              if (n.direction === "parent") {
+                if (addLink(nodeObj.id, d.id)) batchAdded = true;
+              } else {
+                if (addLink(d.id, nodeObj.id)) batchAdded = true;
+              }
+            }
+
+            if (batchAdded) {
+              restartSimulation();
+
+              // Skip animation if laggy (< 10 FPS)
+              if (app.ticker.FPS < 10) {
+                currentDelay = 0;
+                nodesPerBatch = 10;
+              }
+
+              await wait(currentDelay, signal);
+
+              if (currentDelay > 1) {
+                currentDelay *= 0.9;
+              } else {
+                currentDelay = 0;
+                if (Math.random() < 0.1)
+                  nodesPerBatch = Math.min(nodesPerBatch + 1, 100);
+              }
+            }
+          }
+        } catch (e) {
+          if (e.name !== "AbortError") console.error(e);
+          d.vibrationStart = null;
+        } finally {
+          d.expanding = false;
+        }
+      }
+
+      async function handleRightClick(clickedNode) {
+        const neighbors = [];
+        links.forEach((l) => {
+          if (l.source.id === clickedNode.id) neighbors.push(l.target);
+          else if (l.target.id === clickedNode.id) neighbors.push(l.source);
+        });
+
+        const nodesToRemove = new Set();
+        if (neighbors.length <= 1) nodesToRemove.add(clickedNode.id);
+        else {
+          let foundLeaf = false;
+          neighbors.forEach((neighbor) => {
+            let degree = 0;
+            links.forEach((l) => {
+              if (l.source.id === neighbor.id || l.target.id === neighbor.id)
+                degree++;
+            });
+            if (degree === 1) {
+              nodesToRemove.add(neighbor.id);
+              foundLeaf = true;
+            }
+          });
+
+          // If no leaves were found to prune, delete the hub itself
+          if (!foundLeaf) {
+            nodesToRemove.add(clickedNode.id);
+          }
+        }
+
+        if (nodesToRemove.size > 0) {
+          const toRemoveList = Array.from(nodesToRemove);
+          let currentDelay = 20;
+          let nodesPerBatch = 1;
+          const signal = globalAbortController.signal;
+
+          try {
+            for (let i = 0; i < toRemoveList.length; ) {
+              if (signal.aborted) break;
+
+              // Process Batch
+              for (
+                let b = 0;
+                b < nodesPerBatch && i < toRemoveList.length;
+                b++, i++
+              ) {
+                const nodeId = toRemoveList[i];
+                nodes = nodes.filter((n) => n.id !== nodeId);
+                links = links.filter(
+                  (l) =>
+                    (l.source.id || l.source) !== nodeId &&
+                    (l.target.id || l.target) !== nodeId,
+                );
+              }
+
+              // Recalc degrees
+              nodes.forEach((n) => (n.degree = 0));
+              links.forEach((l) => {
+                const s = nodes.find((n) => n.id === (l.source.id || l.source));
+                const t = nodes.find((n) => n.id === (l.target.id || l.target));
+                if (s) s.degree++;
+                if (t) t.degree++;
+              });
+
+              restartSimulation();
+
+              if (app.ticker.FPS < 30) {
+                currentDelay = 0;
+                nodesPerBatch = 200;
+              }
+
+              await wait(currentDelay, signal);
+
+              if (currentDelay > 1) {
+                currentDelay *= 0.9;
+              } else {
+                currentDelay = 0;
+                if (Math.random() < 0.1)
+                  nodesPerBatch = Math.min(nodesPerBatch + 1, 100);
+              }
+            }
+          } catch (e) {
+            if (e.name !== "AbortError") console.error(e);
+          }
+          tooltip.style.display = "none"; // Hide tooltip after deletion
+        }
+      }
+
+      // --- Window Resize ---
+      window.addEventListener("resize", () => {
+        app.renderer.resize(window.innerWidth, window.innerHeight);
+        simulation.force(
+          "center",
+          d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2),
+        );
+        simulation.alpha(1).restart();
+      });
+
+      // --- Controls Events ---
+
+      async function handleAddNode(inputValue, isExplicitCategory, event) {
+        let val = inputValue.trim();
+        if (!val) return;
+
+        // Prepend Category: if explicitly requested and missing
+        if (isExplicitCategory && !val.startsWith("Category:")) {
+          val = "Category:" + val;
+        }
+
+        // First, determine the final title and type by performing the API query
+        let finalTitle = val;
+        let finalType = isExplicitCategory ? "category" : "rip";
+        let initialApiCallSuccess = false; // Track if the initial API call succeeds
+
+        try {
+          const data = await fetchApi(
+            {
+              action: "query",
+              format: "json",
+              titles: val,
+              redirects: 1,
+            },
+            globalAbortController.signal,
+          );
+
+          if (data.query && data.query.pages) {
             const pages = data.query.pages;
             const pageId = Object.keys(pages)[0];
-            if (pageId === "-1") return null; // Page doesn't exist
-            return (pages[pageId].categories || []).map(c => ({ title: c.title, ns: c.ns }));
-        }
-
-        async function getCategoryMembers(title, signal) {
-            let allMembers = [];
-            let continueToken = null;
-            
-            do {
-                const params = {
-                    action: 'query',
-                    format: 'json',
-                    list: 'categorymembers',
-                    cmtitle: title,
-                    cmlimit: 'max', // Usually 500
-                    cmnamespace: '0|14'
-                };
-                
-                if (continueToken) {
-                    params.cmcontinue = continueToken;
-                }
-
-                const data = await fetchApi(params, signal);
-                
-                if (data.query && data.query.categorymembers) {
-                    allMembers = allMembers.concat(data.query.categorymembers);
-                }
-
-                if (data.continue && data.continue.cmcontinue) {
-                    continueToken = data.continue.cmcontinue;
-                } else {
-                    continueToken = null;
-                }
-
-            } while (continueToken);
-
-            return allMembers.map(c => ({ title: c.title, ns: c.ns }));
-        }
-
-        function addNode(id, type, x, y) {
-            let existing = nodes.find(n => n.id === id);
-            if (existing) return existing;
-            const isMassive = MASSIVE_CATEGORIES.has(id);
-            const newNode = { 
-                id: id, type: type, x: x || 0, y: y || 0, degree: 0, visited: false,
-                isMassive: isMassive
-            };
-            nodes.push(newNode);
-            return newNode;
-        }
-
-        function addLink(sourceId, targetId) {
-            const exists = links.some(l => 
-                (l.source.id === sourceId && l.target.id === targetId) ||
-                (l.source === sourceId && l.target === targetId)
-            );
-            if (!exists) {
-                links.push({ source: sourceId, target: targetId });
-                const sNode = nodes.find(n => n.id === sourceId);
-                const tNode = nodes.find(n => n.id === targetId);
-                if(sNode) sNode.degree++;
-                if(tNode) tNode.degree++;
-                return true;
+            if (pageId !== "-1") {
+              const page = pages[pageId];
+              finalTitle = page.title;
+              const ns = page.ns;
+              finalType = ns === 14 ? "category" : "rip";
+              initialApiCallSuccess = true;
             }
-            return false;
+          }
+        } catch (e) {
+          if (e.name === "AbortError") return;
+          console.error("Error during initial API check for handleAddNode:", e);
+          // If initial API call fails, we proceed with the user's input as fallback
         }
 
-        function restartSimulation() {
-            simulation.nodes(nodes);
-            simulation.force("link").links(links);
-            simulation.alpha(1).restart();
-            updatePixiObjects();
+        // Check if node already exists based on finalTitle
+        let existingNode = nodes.find((n) => n.id === finalTitle);
+        if (existingNode) {
+          showPage(existingNode); // Trigger showPage for existing node
+          expandNode(existingNode);
+          return;
         }
 
-        async function expandNode(d) {
-            if (d.expanding) return;
-            d.expanding = true;
-            d.visited = true; // Mark as visited/expanded
-            d.vibrationStart = Date.now();
-            
-            // Capture the current signal for this expansion process
-            const signal = globalAbortController.signal;
-            
-            try {
-                let newNeighbors = [];
-                if (d.type === 'rip') {
-                    const categories = await getPageCategories(d.id, signal);
-                    if (categories === null) {
-                        // Page does not exist -> Pop out of existence
-                        nodes = nodes.filter(n => n.id !== d.id);
-                        links = links.filter(l => (l.source.id || l.source) !== d.id && (l.target.id || l.target) !== d.id);
-                        restartSimulation();
-                        return;
-                    }
-                    newNeighbors = categories.map(cat => ({ ...cat, direction: 'parent' }));
-                } else {
-                    // Fetch members (children)
-                    const members = await getCategoryMembers(d.id, signal);
-                    const memberNeighbors = members.map(mem => ({ ...mem, direction: 'child' }));
-                    
-                    // Fetch parent categories
-                    const parents = await getPageCategories(d.id, signal);
-                    const parentNeighbors = (parents || []).map(p => ({ ...p, direction: 'parent' }));
-                    
-                    newNeighbors = [...memberNeighbors, ...parentNeighbors];
-                }
+        // If we reach here, the node does not exist, so proceed with animation
+        let startX = window.innerWidth / 2;
+        let startY = window.innerHeight / 2;
 
-                d.vibrationStart = null;
-                if (signal.aborted) return;
-
-                const angleStep = (2 * Math.PI) / (newNeighbors.length || 1);
-                
-                let currentDelay = 20;
-                let nodesPerBatch = 1;
-
-                for (let i = 0; i < newNeighbors.length;) {
-                    if (signal.aborted) break;
-                    
-                    let batchAdded = false;
-
-                    // Process batch
-                    for (let b = 0; b < nodesPerBatch && i < newNeighbors.length; b++, i++) {
-                        const n = newNeighbors[i];
-                        const type = n.ns === 14 ? 'category' : 'rip';
-                        
-                        const angle = Math.random() * 2 * Math.PI; 
-                        const dist = 50 + Math.random() * 50;
-                        const nx = d.x + Math.cos(angle) * dist;
-                        const ny = d.y + Math.sin(angle) * dist;
-                        
-                        const nodeObj = addNode(n.title, type, nx, ny);
-                        
-                        if (n.direction === 'parent') {
-                            if (addLink(nodeObj.id, d.id)) batchAdded = true;
-                        } else {
-                            if (addLink(d.id, nodeObj.id)) batchAdded = true;
-                        }
-                    }
-
-                    if (batchAdded) {
-                        restartSimulation();
-                        
-                        // Skip animation if laggy (< 30 FPS)
-                        if (app.ticker.FPS < 30) {
-                            currentDelay = 0;
-                            nodesPerBatch = 200; 
-                        }
-
-                        await wait(currentDelay, signal);
-                        
-                        if (currentDelay > 1) {
-                            currentDelay *= 0.9;
-                        } else {
-                            currentDelay = 0;
-                            if (Math.random() < 0.1) nodesPerBatch = Math.min(nodesPerBatch + 1, 100);
-                        }
-                    }
-                }
-            } catch (e) {
-                if (e.name !== 'AbortError') console.error(e);
-                d.vibrationStart = null;
-            } finally {
-                d.expanding = false;
-            }
+        if (event) {
+          if (event.clientX) {
+            startX = event.clientX;
+            startY = event.clientY;
+          } else if (event.target && event.target.getBoundingClientRect) {
+            const rect = event.target.getBoundingClientRect();
+            startX = rect.left + rect.width / 2;
+            startY = rect.top + rect.height / 2;
+          }
         }
 
-        async function handleRightClick(clickedNode) {
-            const neighbors = [];
-            links.forEach(l => {
-                if (l.source.id === clickedNode.id) neighbors.push(l.target);
-                else if (l.target.id === clickedNode.id) neighbors.push(l.source);
-            });
+        const tempId = "Loading... " + Date.now();
 
-            const nodesToRemove = new Set();
-            if (neighbors.length <= 1) nodesToRemove.add(clickedNode.id);
-            else {
-                let foundLeaf = false;
-                neighbors.forEach(neighbor => {
-                    let degree = 0;
-                    links.forEach(l => {
-                        if (l.source.id === neighbor.id || l.target.id === neighbor.id) degree++;
-                    });
-                    if (degree === 1) {
-                        nodesToRemove.add(neighbor.id);
-                        foundLeaf = true;
-                    }
-                });
-                
-                // If no leaves were found to prune, delete the hub itself
-                if (!foundLeaf) {
-                    nodesToRemove.add(clickedNode.id);
-                }
-            }
+        // Calculate velocity vector towards center
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        let dx = centerX - startX;
+        let dy = centerY - startY;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const speed = 15; // Initial burst speed
 
-            if (nodesToRemove.size > 0) {
-                const toRemoveList = Array.from(nodesToRemove);
-                let currentDelay = 20;
-                let nodesPerBatch = 1;
-                const signal = globalAbortController.signal;
+        const placeholderNode = addNode(
+          tempId,
+          isExplicitCategory ? "category" : "rip",
+          startX,
+          startY,
+        );
+        placeholderNode.vx = (dx / dist) * speed;
+        placeholderNode.vy = (dy / dist) * speed;
+        placeholderNode.vibrationStart = Date.now(); // Start vibrating
 
-                try {
-                    for (let i = 0; i < toRemoveList.length; ) {
-                        if (signal.aborted) break;
+        restartSimulation();
 
-                        // Process Batch
-                        for (let b = 0; b < nodesPerBatch && i < toRemoveList.length; b++, i++) {
-                            const nodeId = toRemoveList[i];
-                            nodes = nodes.filter(n => n.id !== nodeId);
-                            links = links.filter(l => (l.source.id || l.source) !== nodeId && (l.target.id || l.target) !== nodeId);
-                        }
-                        
-                        // Recalc degrees
-                        nodes.forEach(n => n.degree = 0);
-                        links.forEach(l => {
-                            const s = nodes.find(n => n.id === (l.source.id || l.source));
-                            const t = nodes.find(n => n.id === (l.target.id || l.target));
-                            if (s) s.degree++;
-                            if (t) t.degree++;
-                        });
+        try {
+          // Now update the placeholder with the final determined title and type
+          // If initialApiCallSuccess is false, it means API call failed or page doesn't exist,
+          // so finalTitle will be just the user's input `val`.
+          placeholderNode.id = finalTitle;
+          placeholderNode.type = finalType;
 
-                        restartSimulation();
-                        
-                        if (app.ticker.FPS < 30) {
-                            currentDelay = 0;
-                            nodesPerBatch = 200;
-                        }
-
-                        await wait(currentDelay, signal);
-                        
-                        if (currentDelay > 1) {
-                            currentDelay *= 0.9;
-                        } else {
-                            currentDelay = 0;
-                            if (Math.random() < 0.1) nodesPerBatch = Math.min(nodesPerBatch + 1, 100);
-                        }
-                    }
-                } catch (e) {
-                     if (e.name !== 'AbortError') console.error(e);
-                }
-                tooltip.style.display = 'none'; // Hide tooltip after deletion
-            }
+          restartSimulation();
+          expandNode(placeholderNode);
+        } catch (e) {
+          if (e.name === "AbortError") {
+            // Cleanup placeholder if aborted during animation (unlikely, but safe)
+            nodes = nodes.filter((n) => n.id !== tempId);
+            restartSimulation();
+            return;
+          }
+          console.error("Error during handleAddNode animation phase:", e);
+          // If something goes wrong here, the placeholder will remain as "Loading..."
+          // Or we can expand it as a fallback with its current (possibly temp) ID
+          expandNode(placeholderNode);
         }
+      }
 
-        // --- Window Resize ---
-        window.addEventListener('resize', () => {
-            app.renderer.resize(window.innerWidth, window.innerHeight);
-            simulation.force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2));
-            simulation.alpha(1).restart();
-        });
+      async function handleRandomNode(e, namespace = 0, type = "rip") {
+        // Visual Start - Spawn immediately for better UX
+        const startX = e.clientX || window.innerWidth / 2;
+        const startY = e.clientY || window.innerHeight / 2;
+        const tempId = "Loading... " + Date.now();
 
-        // --- Controls Events ---
-        
-        async function handleAddNode(inputValue, isExplicitCategory, event) {
-            let val = inputValue.trim();
-            if(!val) return;
+        // Calculate velocity vector towards center
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        let dx = centerX - startX;
+        let dy = centerY - startY;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const speed = 15; // Initial burst speed
 
-            // Prepend Category: if explicitly requested and missing
-            if (isExplicitCategory && !val.startsWith("Category:")) {
-                val = "Category:" + val;
-            }
-            
-            // First, determine the final title and type by performing the API query
-            let finalTitle = val;
-            let finalType = isExplicitCategory ? 'category' : 'rip';
-            let initialApiCallSuccess = false; // Track if the initial API call succeeds
-            
-            try {
-                const data = await fetchApi({
-                    action: 'query',
-                    format: 'json',
-                    titles: val,
-                    redirects: 1
-                }, globalAbortController.signal);
+        const placeholderNode = addNode(tempId, type, startX, startY);
+        placeholderNode.vx = (dx / dist) * speed;
+        placeholderNode.vy = (dy / dist) * speed;
+        placeholderNode.vibrationStart = Date.now(); // Start vibrating
 
-                if (data.query && data.query.pages) {
-                    const pages = data.query.pages;
-                    const pageId = Object.keys(pages)[0];
-                    if (pageId !== "-1") {
-                        const page = pages[pageId];
-                        finalTitle = page.title;
-                        const ns = page.ns;
-                        finalType = ns === 14 ? 'category' : 'rip';
-                        initialApiCallSuccess = true;
-                    }
-                }
-            } catch (e) {
-                if (e.name === 'AbortError') return;
-                console.error("Error during initial API check for handleAddNode:", e);
-                // If initial API call fails, we proceed with the user's input as fallback
-            }
+        restartSimulation();
 
-            // Check if node already exists based on finalTitle
-            let existingNode = nodes.find(n => n.id === finalTitle);
+        try {
+          // Fetch random rip data
+          const data = await fetchApi(
+            {
+              action: "query",
+              format: "json",
+              list: "random",
+              rnnamespace: namespace,
+              rnlimit: 1,
+            },
+            globalAbortController.signal,
+          );
+
+          if (data.query && data.query.random && data.query.random.length > 0) {
+            const page = data.query.random[0];
+            const val = page.title;
+
+            // Check if node already exists
+            let existingNode = nodes.find((n) => n.id === val);
             if (existingNode) {
-                showPage(existingNode); // Trigger showPage for existing node
-                expandNode(existingNode);
-                return;
+              // Node exists: Remove placeholder and activate existing
+              nodes = nodes.filter((n) => n.id !== tempId);
+              restartSimulation();
+              await showPage(existingNode);
+              focusOnNode(existingNode);
+              expandNode(existingNode);
+              return;
             }
 
-            // If we reach here, the node does not exist, so proceed with animation
-            let startX = window.innerWidth / 2;
-            let startY = window.innerHeight / 2;
-            
-            if (event) {
-                if (event.clientX) {
-                    startX = event.clientX;
-                    startY = event.clientY;
-                } else if (event.target && event.target.getBoundingClientRect) {
-                    const rect = event.target.getBoundingClientRect();
-                    startX = rect.left + rect.width / 2;
-                    startY = rect.top + rect.height / 2;
-                }
-            }
-            
-            const tempId = "Loading... " + Date.now();
-            
-            // Calculate velocity vector towards center
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            let dx = centerX - startX;
-            let dy = centerY - startY;
-            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-            const speed = 15; // Initial burst speed
-            
-            const placeholderNode = addNode(tempId, isExplicitCategory ? 'category' : 'rip', startX, startY);
-            placeholderNode.vx = (dx / dist) * speed;
-            placeholderNode.vy = (dy / dist) * speed;
-            placeholderNode.vibrationStart = Date.now(); // Start vibrating
-            
+            // Update Placeholder to Real Node
+            placeholderNode.id = val;
+            finalNode = placeholderNode;
+
             restartSimulation();
-
-            try {
-                // Now update the placeholder with the final determined title and type
-                // If initialApiCallSuccess is false, it means API call failed or page doesn't exist,
-                // so finalTitle will be just the user's input `val`.
-                placeholderNode.id = finalTitle;
-                placeholderNode.type = finalType;
-                
-                restartSimulation();
-                expandNode(placeholderNode);
-
-            } catch (e) {
-                if (e.name === 'AbortError') {
-                    // Cleanup placeholder if aborted during animation (unlikely, but safe)
-                    nodes = nodes.filter(n => n.id !== tempId);
-                    restartSimulation();
-                    return;
-                }
-                console.error("Error during handleAddNode animation phase:", e);
-                // If something goes wrong here, the placeholder will remain as "Loading..."
-                // Or we can expand it as a fallback with its current (possibly temp) ID
-                expandNode(placeholderNode);
-            }
-        }
-
-
-
-        async function handleRandomNode(e, namespace = 0, type = 'rip') {
-            // Visual Start - Spawn immediately for better UX
-            const startX = e.clientX || window.innerWidth / 2;
-            const startY = e.clientY || window.innerHeight / 2;
-            const tempId = "Loading... " + Date.now();
-            
-            // Calculate velocity vector towards center
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            let dx = centerX - startX;
-            let dy = centerY - startY;
-            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-            const speed = 15; // Initial burst speed
-            
-            const placeholderNode = addNode(tempId, type, startX, startY);
-            placeholderNode.vx = (dx / dist) * speed;
-            placeholderNode.vy = (dy / dist) * speed;
-            placeholderNode.vibrationStart = Date.now(); // Start vibrating
-            
+            await showPage(finalNode);
+            focusOnNode(finalNode);
+            expandNode(finalNode);
+          } else {
+            // No data, cleanup
+            nodes = nodes.filter((n) => n.id !== tempId);
             restartSimulation();
-
-            try {
-                // Fetch random rip data
-                const data = await fetchApi({
-                    action: 'query',
-                    format: 'json',
-                    list: 'random',
-                    rnnamespace: namespace,
-                    rnlimit: 1
-                }, globalAbortController.signal);
-                
-                if (data.query && data.query.random && data.query.random.length > 0) {
-                    const page = data.query.random[0];
-                    const val = page.title;
-                    
-                    // Check if node already exists
-                    let existingNode = nodes.find(n => n.id === val);
-                    if (existingNode) {
-                        // Node exists: Remove placeholder and activate existing
-                        nodes = nodes.filter(n => n.id !== tempId);
-                        restartSimulation();
-                        focusOnNode(existingNode);
-                        showPage(existingNode);
-                        expandNode(existingNode);
-                        return;
-                    }
-
-                    // Update Placeholder to Real Node
-                    placeholderNode.id = val;
-                    finalNode = placeholderNode;
-                    
-                    restartSimulation();
-                    focusOnNode(finalNode);
-                    showPage(finalNode);
-                    expandNode(finalNode);
-                } else {
-                     // No data, cleanup
-                     nodes = nodes.filter(n => n.id !== tempId);
-                     restartSimulation();
-                }
-            } catch (e) {
-                if (e.name !== 'AbortError') console.error("Error fetching random node:", e);
-                // Cleanup on error
-                nodes = nodes.filter(n => n.id !== tempId);
-                restartSimulation();
-            }
+          }
+        } catch (e) {
+          if (e.name !== "AbortError")
+            console.error("Error fetching random node:", e);
+          // Cleanup on error
+          nodes = nodes.filter((n) => n.id !== tempId);
+          restartSimulation();
         }
+      }
 
-        function initControls() {
-            const controlsHtml = `
-                <div class="controls-content">
+      function initControls() {
+        const controlsHtml = `
+                <div id="controlsInner" class="controls-content">
                     <div class="help-text">
                         <strong>Left-click</strong> node to fetch connections.<br>
                         <strong>Right-click</strong> node to prune leaves, and again for self.<br>
@@ -1329,6 +1511,13 @@
                     <div class="input-group">
                         <button id="selectRandomUnvisitedCatBtn" style="width: 100%; background: #69b3a2; white-space: nowrap;">Select Random Unvisited Category</button>
                     </div>
+                    <div class="input-group">
+                        <button id="centerOnSelectedBtn" style="width: 100%; background: #69b3a2;">Center on Selected</button>
+                    </div>
+                    ${isDebugMode ? `
+                    <div class="input-group">
+                        <button id="toggleDebugBtn" style="width: 100%; background: #555;">Toggle Debug View</button>
+                    </div>` : ''}
                     
                     <div class="control-group" style="margin-top: 10px; gap: 8px;">
                         <label style="margin: 0; cursor: pointer;"><input type="checkbox" id="showWikiCheck" checked> Sync Wiki Window</label>
@@ -1358,242 +1547,497 @@
                 </div>
             `;
 
-            controlsFrame = jsFrame.create({
-                title: 'Controls',
-                left: window.innerWidth - 320, top: 20, width: 300, height: 600,
-                movable: true, resizable: true,
-                html: controlsHtml
-            });
-            controlsFrame.setTitleBarClassName('dark-titlebar', 'dark-titlebar');
-            controlsFrame.show();
+        controlsFrame = jsFrame.create({
+          title: "Controls",
+          left: window.innerWidth - 320,
+          top: 20,
+          width: 300,
+          height: 640,
+          movable: true,
+          resizable: true,
+          html: controlsHtml,
+        });
+        controlsFrame.setTitleBarClassName("dark-titlebar", "dark-titlebar");
+        controlsFrame.show();
 
-            // Attach Listeners
-            document.getElementById('forceHeader').addEventListener('click', (e) => {
-                const content = document.getElementById('forceControls');
-                const isVisible = content.style.display !== 'none';
-                content.style.display = isVisible ? 'none' : 'block';
-                e.target.innerText = isVisible ? 'Graph Physics ▶' : 'Graph Physics ▼';
-            });
+        // Attach Listeners
+        document
+          .getElementById("forceHeader")
+          .addEventListener("click", (e) => {
+            const content = document.getElementById("forceControls");
+            const isVisible = content.style.display !== "none";
+            content.style.display = isVisible ? "none" : "block";
+            e.target.innerText = isVisible
+              ? "Graph Physics ▶"
+              : "Graph Physics ▼";
+          });
 
-            document.getElementById('addPageBtn').addEventListener('click', (e) => {
-                handleAddNode(document.getElementById('pageInput').value, false, e);
-            });
-            
-            document.getElementById('addCatBtn').addEventListener('click', (e) => {
-                handleAddNode(document.getElementById('catInput').value, true, e);
-            });
+        document.getElementById("addPageBtn").addEventListener("click", (e) => {
+          handleAddNode(document.getElementById("pageInput").value, false, e);
+        });
 
-            document.getElementById('pageInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleAddNode(e.target.value, false, e);
-            });
-            document.getElementById('catInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleAddNode(e.target.value, true, e);
-            });
+        document.getElementById("addCatBtn").addEventListener("click", (e) => {
+          handleAddNode(document.getElementById("catInput").value, true, e);
+        });
 
-            document.getElementById('randomBtn').addEventListener('click', (e) => handleRandomNode(e, 0, 'rip'));
-            document.getElementById('randomCatBtn').addEventListener('click', (e) => handleRandomNode(e, 14, 'category'));
-            document.getElementById('selectRandomUnvisitedBtn').addEventListener('click', playNextRandomRip);
-            document.getElementById('selectRandomUnvisitedCatBtn').addEventListener('click', playNextRandomCategory);
+        document
+          .getElementById("pageInput")
+          .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleAddNode(e.target.value, false, e);
+          });
+        document
+          .getElementById("catInput")
+          .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleAddNode(e.target.value, true, e);
+          });
 
-            document.getElementById('centerForce').addEventListener('input', (e) => {
-                const v = +e.target.value;
-                document.getElementById('centerForceVal').innerText = v;
-                simulation.force("x").strength(v);
-                simulation.force("y").strength(v);
-                simulation.alpha(1).restart();
-            });
-            document.getElementById('repelForce').addEventListener('input', (e) => {
-                const v = +e.target.value;
-                document.getElementById('repelForceVal').innerText = v;
-                simulation.force("charge").strength(-v);
-                simulation.alpha(1).restart();
-            });
-            document.getElementById('linkForce').addEventListener('input', (e) => {
-                const v = +e.target.value;
-                document.getElementById('linkForceVal').innerText = v;
-                simulation.force("link").strength(v);
-                simulation.alpha(1).restart();
-            });
-            document.getElementById('linkDistance').addEventListener('input', (e) => {
-                const v = +e.target.value;
-                document.getElementById('linkDistanceVal').innerText = v;
-                linkDistanceBase = v;
-                simulation.force("link").distance(getLinkDistance);
-                simulation.alpha(1).restart();
-            });
+        document
+          .getElementById("randomBtn")
+          .addEventListener("click", (e) => handleRandomNode(e, 0, "rip"));
+        document
+          .getElementById("randomCatBtn")
+          .addEventListener("click", (e) =>
+            handleRandomNode(e, 14, "category"),
+          );
+        document
+          .getElementById("selectRandomUnvisitedBtn")
+          .addEventListener("click", playNextRandomRip);
+        document
+          .getElementById("selectRandomUnvisitedCatBtn")
+          .addEventListener("click", playNextRandomCategory);
 
-            document.getElementById('autoplayUnvisitedCheck').addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    playNextRandomRip();
+        document
+          .getElementById("centerOnSelectedBtn")
+          .addEventListener("click", () => {
+            let targetNode = null;
+            if (currentWikiTitle) {
+              targetNode = nodes.find((n) => n.id === currentWikiTitle);
+            } else if (currentYoutubeNodeId) {
+              targetNode = nodes.find((n) => n.id === currentYoutubeNodeId);
+            }
+
+            if (targetNode) {
+              focusOnNode(targetNode);
+            } else {
+              focusOnNode({
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 2,
+              });
+            }
+          });
+
+        if (isDebugMode) {
+            document
+              .getElementById("toggleDebugBtn")
+              .addEventListener("click", () => {
+                isDebugView = !isDebugView;
+                console.log("Debug View:", isDebugView);
+                calculateOptimalCenter();
+              });
+        }
+
+        document
+          .getElementById("centerForce")
+          .addEventListener("input", (e) => {
+            const v = +e.target.value;
+            document.getElementById("centerForceVal").innerText = v;
+            simulation.force("x").strength(v);
+            simulation.force("y").strength(v);
+            simulation.alpha(1).restart();
+          });
+        document.getElementById("repelForce").addEventListener("input", (e) => {
+          const v = +e.target.value;
+          document.getElementById("repelForceVal").innerText = v;
+          simulation.force("charge").strength(-v);
+          simulation.alpha(1).restart();
+        });
+        document.getElementById("linkForce").addEventListener("input", (e) => {
+          const v = +e.target.value;
+          document.getElementById("linkForceVal").innerText = v;
+          simulation.force("link").strength(v);
+          simulation.alpha(1).restart();
+        });
+        document
+          .getElementById("linkDistance")
+          .addEventListener("input", (e) => {
+            const v = +e.target.value;
+            document.getElementById("linkDistanceVal").innerText = v;
+            linkDistanceBase = v;
+            simulation.force("link").distance(getLinkDistance);
+            simulation.alpha(1).restart();
+          });
+
+        document
+          .getElementById("autoplayUnvisitedCheck")
+          .addEventListener("change", (e) => {
+            if (e.target.checked) {
+              playNextRandomRip();
+            }
+          });
+      }
+
+      // YouTube Autoplay Logic
+      function onPlayerStateChange(event) {
+        // YT.PlayerState.ENDED is 0
+        if (event.data === 0) {
+          if (document.getElementById("autoplayUnvisitedCheck").checked) {
+            playNextRandomRip();
+          }
+        }
+      }
+
+      function onPlayerError(event) {
+        // Error codes: 2 (invalid param), 5 (HTML5 error), 100 (not found/private), 101/150 (embed not allowed)
+        let errorMsg = "Unknown Error";
+        switch (event.data) {
+          case 2:
+            errorMsg = "Invalid Parameter (2)";
+            break;
+          case 5:
+            errorMsg = "HTML5 Player Error (5)";
+            break;
+          case 100:
+            errorMsg = "Video Not Found / Private (100)";
+            break;
+          case 101:
+          case 150:
+            errorMsg = "Embedding Not Allowed (101/150)";
+            break;
+        }
+        console.warn(`YouTube Player Error: ${errorMsg}`);
+
+        if (document.getElementById("autoplayUnvisitedCheck").checked) {
+          console.log("Skipping unavailable video...");
+          setTimeout(playNextRandomRip, 2000); // Short delay before skipping
+        }
+      }
+
+      // --- Smart Camera Logic ---
+      function getFrameRect(innerId) {
+        const el = document.getElementById(innerId);
+        if (el) {
+          let p = el.parentElement;
+          while (p && p !== document.body) {
+            if (p.id && p.id.startsWith("window_"))
+              return p.getBoundingClientRect();
+            p = p.parentElement;
+          }
+          return el.getBoundingClientRect();
+        }
+        return null;
+      }
+
+      function calculateOptimalCenter() {
+        const width = window.innerWidth;
+
+        const height = window.innerHeight;
+
+        const gridW = 40; // Higher res for debug
+
+        const gridH = 30;
+
+        const cellW = width / gridW;
+
+        const cellH = height / gridH;
+
+        const padding = 10; // "Ghost" blocked cells outside boundary
+
+        const rects = [
+          getFrameRect("wikiInnerFrame"),
+
+          getFrameRect("ytPlayer"),
+
+          getFrameRect("controlsInner"),
+        ].filter((r) => r && (r.width > 0 || r.height > 0));
+
+        // Grid including padding
+
+        const calcW = gridW + padding * 2;
+
+        const calcH = gridH + padding * 2;
+
+        // 1. Calculate initial score grid (expanded)
+
+        const scoreGrid = Array(calcW)
+          .fill(0)
+          .map(() => Array(calcH).fill(0));
+
+        const BLOCKED = -1e9; // Large negative number for blocked cells
+
+        for (let x = 0; x < calcW; x++) {
+          for (let y = 0; y < calcH; y++) {
+            const vx = x - padding; // Visible x
+
+            const vy = y - padding; // Visible y
+
+            // Check if out of visible bounds (in the ghost padding)
+
+            if (vx < 0 || vx >= gridW || vy < 0 || vy >= gridH) {
+              scoreGrid[x][y] = BLOCKED;
+
+              continue;
+            }
+
+            const cx = (vx + 0.5) * cellW;
+            const cy = (vy + 0.5) * cellH;
+
+            let score = 1000;
+
+            for (const rect of rects) {
+              if (
+                cx >= rect.left &&
+                cx <= rect.right &&
+                cy >= rect.top &&
+                cy <= rect.bottom
+              ) {
+                score = BLOCKED;
+                break;
+              }
+            }
+
+            if (score === BLOCKED) {
+              scoreGrid[x][y] = BLOCKED;
+            } else {
+              scoreGrid[x][y] = score;
+            }
+          }
+        }
+
+        // 2. Apply diffusion/blur pass on expanded grid
+
+        const blurredGrid = Array(calcW)
+          .fill(0)
+          .map(() => Array(calcH).fill(0));
+
+        const blurPasses = 20;
+
+        let sourceGrid = scoreGrid;
+
+        let targetGrid = blurredGrid;
+
+        for (let p = 0; p < blurPasses; p++) {
+          for (let x = 0; x < calcW; x++) {
+            for (let y = 0; y < calcH; y++) {
+              if (sourceGrid[x][y] === BLOCKED) {
+                targetGrid[x][y] = BLOCKED;
+
+                continue;
+              }
+
+              let totalScore = 0;
+
+              let count = 0;
+
+              for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                  const nx = x + dx;
+
+                  const ny = y + dy;
+
+                  if (nx >= 0 && nx < calcW && ny >= 0 && ny < calcH) {
+                    if (sourceGrid[nx][ny] === BLOCKED) {
+                      totalScore += -10000; // Treat blocked as very bad
+                    } else {
+                      totalScore += sourceGrid[nx][ny];
+                    }
+
+                    count++;
+                  }
                 }
-            });
+              }
+
+              targetGrid[x][y] = count > 0 ? totalScore / count : BLOCKED;
+            }
+          }
+
+          [sourceGrid, targetGrid] = [targetGrid, sourceGrid];
         }
 
-        // YouTube Autoplay Logic
-        function onPlayerStateChange(event) {
-            // YT.PlayerState.ENDED is 0
-            if (event.data === 0) { 
-                if (document.getElementById('autoplayUnvisitedCheck').checked) {
-                    playNextRandomRip();
-                }
+        // 3. Extract visible grid and find best score
+
+        const finalVisibleGrid = Array(gridW)
+          .fill(0)
+          .map(() => Array(gridH).fill(0));
+
+        let bestScore = -Infinity;
+
+        let bestX = width / 2;
+
+        let bestY = height / 2;
+
+        let minS = Infinity,
+          maxS = -Infinity;
+
+        for (let x = 0; x < gridW; x++) {
+          for (let y = 0; y < gridH; y++) {
+            const val = sourceGrid[x + padding][y + padding];
+
+            finalVisibleGrid[x][y] = val;
+
+            if (val > BLOCKED) {
+              if (val > bestScore) {
+                bestScore = val;
+
+                bestX = (x + 0.5) * cellW;
+
+                bestY = (y + 0.5) * cellH;
+              }
+
+              if (val < minS) minS = val;
+
+              if (val > maxS) maxS = val;
             }
+          }
         }
 
-        function onPlayerError(event) {
-            // Error codes: 2 (invalid param), 5 (HTML5 error), 100 (not found/private), 101/150 (embed not allowed)
-            let errorMsg = "Unknown Error";
-            switch(event.data) {
-                case 2: errorMsg = "Invalid Parameter (2)"; break;
-                case 5: errorMsg = "HTML5 Player Error (5)"; break;
-                case 100: errorMsg = "Video Not Found / Private (100)"; break;
-                case 101: 
-                case 150: errorMsg = "Embedding Not Allowed (101/150)"; break;
-            }
-            console.warn(`YouTube Player Error: ${errorMsg}`);
-            
-            if (document.getElementById('autoplayUnvisitedCheck').checked) {
-                console.log("Skipping unavailable video...");
-                setTimeout(playNextRandomRip, 2000); // Short delay before skipping
-            }
-        }
+        // 4. Draw Debug Graphics
 
-        // --- Smart Camera Logic ---
-        function getFrameRect(innerId) {
-            const el = document.getElementById(innerId);
-            if (el) {
-                let p = el.parentElement;
-                while (p && p !== document.body) {
-                    if (p.id && p.id.startsWith('window_')) return p.getBoundingClientRect();
-                    p = p.parentElement;
-                }
-                return el.getBoundingClientRect();
-            }
-            return null;
-        }
+        if (debugGraphics) {
+            debugGraphics.clear();
 
-        function calculateOptimalCenter() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            const gridW = 20;
-            const gridH = 15;
-            const cellW = width / gridW;
-            const cellH = height / gridH;
+            if (isDebugView) {
+              debugGridData = {
+                grid: finalVisibleGrid,
+                cellW,
+                cellH,
+                gridW,
+                gridH,
+              };
 
-            const wikiRect = getFrameRect('wikiInnerFrame');
-            const ytRect = getFrameRect('ytPlayer');
-
-            let bestScore = -Infinity;
-            let bestX = width / 2;
-            let bestY = height / 2;
-
-            for (let x = 0; x < gridW; x++) {
+              for (let x = 0; x < gridW; x++) {
                 for (let y = 0; y < gridH; y++) {
-                    const cx = (x + 0.5) * cellW;
-                    const cy = (y + 0.5) * cellH;
+                  const s = finalVisibleGrid[x][y];
 
-                    // Base score: Prefer center
-                    const dx = cx - width/2;
-                    const dy = cy - height/2;
-                    const distCenter = Math.sqrt(dx*dx + dy*dy);
-                    let score = 1000 - distCenter; 
+                  if (s === BLOCKED) {
+                    debugGraphics.beginFill(0x000000, 0.5);
 
-                    // Window Avoidance
-                    if (wikiRect) {
-                        // Max of 0 ensures we don't get negative distance if inside (which handles overlap)
-                        // If inside, max is 0. 
-                        // Wait, signed distance is better.
-                        // If cx is between left/right, dx is 0.
-                        let insideX = cx >= wikiRect.left && cx <= wikiRect.right;
-                        let insideY = cy >= wikiRect.top && cy <= wikiRect.bottom;
-                        
-                        if (insideX && insideY) {
-                            score = -100000; // Blocked
-                        } else {
-                            // Euclidean distance to nearest edge
-                            const d_x = Math.max(wikiRect.left - cx, cx - wikiRect.right, 0);
-                            const d_y = Math.max(wikiRect.top - cy, cy - wikiRect.bottom, 0);
-                            const dist = Math.sqrt(d_x*d_x + d_y*d_y);
-                            score -= (20000 / (dist + 50)); // Heavy penalty for proximity
-                        }
-                    }
-                    if (ytRect) {
-                        let insideX = cx >= ytRect.left && cx <= ytRect.right;
-                        let insideY = cy >= ytRect.top && cy <= ytRect.bottom;
-                        if (insideX && insideY) {
-                            score = -100000; 
-                        } else {
-                            const d_x = Math.max(ytRect.left - cx, cx - ytRect.right, 0);
-                            const d_y = Math.max(ytRect.top - cy, cy - ytRect.bottom, 0);
-                            const dist = Math.sqrt(d_x*d_x + d_y*d_y);
-                            score -= (20000 / (dist + 50));
-                        }
-                    }
-                    
-                    // Edge penalty
-                    const edgeDist = Math.min(cx, width-cx, cy, height-cy);
-                    if (edgeDist < 80) score -= 2000;
+                    debugGraphics.drawRect(x * cellW, y * cellH, cellW, cellH);
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestX = cx;
-                        bestY = cy;
+                    debugGraphics.endFill();
+                  } else {
+                    let n = (s - minS) / (maxS - minS || 1);
+
+                    // Color ramp: Red (0) -> Yellow (0.5) -> Green (1)
+
+                    let r,
+                      g,
+                      b = 0;
+
+                    if (n < 0.5) {
+                      r = 255;
+
+                      g = Math.round(255 * (n * 2));
+                    } else {
+                      r = Math.round(255 * (1 - (n - 0.5) * 2));
+
+                      g = 255;
                     }
+
+                    const color = (r << 16) | (g << 8) | b;
+
+                    debugGraphics.beginFill(color, 0.3);
+
+                    debugGraphics.drawRect(x * cellW, y * cellH, cellW, cellH);
+
+                    debugGraphics.endFill();
+                  }
                 }
-            }
-            return { x: bestX, y: bestY };
-        }
+              }
 
-        let trackingNode = null;
-        let trackingStartTransform = null;
-        let trackingStartTime = 0;
-        let trackingTargetScreenPos = null; // Store the target position
-        const TRACKING_DURATION = 2000;
+              // Draw Best Point
 
-        function focusOnNode(node) {
-            trackingNode = node;
-            trackingStartTime = Date.now();
-            trackingStartTransform = d3.zoomTransform(app.view);
-            trackingTargetScreenPos = calculateOptimalCenter(); // Calculate once
-            d3.select(app.view).interrupt();
-        }
+              debugGraphics.beginFill(0xffffff);
 
-        function playNextRandomRip() {
-            const unvisitedRips = nodes.filter(n => !n.visited && n.type === 'rip');
-            if (unvisitedRips.length > 0) {
-                const randomIndex = Math.floor(Math.random() * unvisitedRips.length);
-                const node = unvisitedRips[randomIndex];
-                focusOnNode(node);
-                showPage(node);
-                expandNode(node);
+              debugGraphics.lineStyle(2, 0x000000);
+
+              debugGraphics.drawCircle(bestX, bestY, 5);
+
+              debugGraphics.endFill();
             } else {
-                console.log("No unvisited rips left. Stopping autoplay.");
-                document.getElementById('autoplayUnvisitedCheck').checked = false;
+              debugGridData = null;
+
+              document.getElementById("debugTooltip").style.display = "none";
             }
         }
 
-        function playNextRandomCategory() {
-            const unvisitedCats = nodes.filter(n => !n.visited && n.type === 'category' && !MASSIVE_CATEGORIES.has(n.id));
-            if (unvisitedCats.length > 0) {
-                const randomIndex = Math.floor(Math.random() * unvisitedCats.length);
-                const node = unvisitedCats[randomIndex];
-                focusOnNode(node);
-                showPage(node);
-                expandNode(node);
-            } else {
-                console.log("No unvisited categories left (excluding massive ones).");
-            }
+        return { x: bestX, y: bestY };
+      }
+
+      let trackingNode = null;
+      let trackingStartTransform = null;
+      let trackingStartTime = 0;
+      let trackingTargetScreenPos = null; // Store the target position
+      const TRACKING_DURATION = 4000;
+
+      function focusOnNode(node) {
+        trackingNode = node;
+        trackingStartTime = Date.now();
+        trackingStartTransform = d3.zoomTransform(app.view);
+        trackingTargetScreenPos = calculateOptimalCenter(); // Calculate once
+        d3.select(app.view).interrupt();
+      }
+
+      async function playNextRandomRip() {
+        const unvisitedRips = nodes.filter(
+          (n) => !n.visited && n.type === "rip",
+        );
+        if (unvisitedRips.length > 0) {
+          const randomIndex = Math.floor(Math.random() * unvisitedRips.length);
+          const node = unvisitedRips[randomIndex];
+          await showPage(node);
+          focusOnNode(node);
+          expandNode(node);
+        } else {
+          console.log("No unvisited rips left. Stopping autoplay.");
+          document.getElementById("autoplayUnvisitedCheck").checked = false;
         }
+      }
 
+      async function playNextRandomCategory() {
+        const unvisitedCats = nodes.filter(
+          (n) =>
+            !n.visited &&
+            n.type === "category" &&
+            !MASSIVE_CATEGORIES.has(n.id),
+        );
+        if (unvisitedCats.length > 0) {
+          const randomIndex = Math.floor(Math.random() * unvisitedCats.length);
+          const node = unvisitedCats[randomIndex];
+          await showPage(node);
+          focusOnNode(node);
+          expandNode(node);
+        } else {
+          console.log("No unvisited categories left (excluding massive ones).");
+        }
+      }
 
+      window.addEventListener("mousemove", (e) => {
+        if (!debugGridData) return;
 
-        // --- Init ---
-        (async function init() {
-            initControls();
-            // Start with a random rip
-            await handleRandomNode({});
-            isInitialLoad = false;
-        })();
+        const { grid, cellW, cellH, gridW, gridH } = debugGridData;
+        const x = Math.floor(e.clientX / cellW);
+        const y = Math.floor(e.clientY / cellH);
 
+        const tooltip = document.getElementById("debugTooltip");
+
+        if (x >= 0 && x < gridW && y >= 0 && y < gridH) {
+          const score = grid[x][y];
+          tooltip.style.display = "block";
+          tooltip.style.left = e.clientX + 15 + "px";
+          tooltip.style.top = e.clientY + 15 + "px";
+          tooltip.innerText = `Score: ${score === -1e9 ? "BLOCKED" : score.toFixed(1)}`;
+        } else {
+          tooltip.style.display = "none";
+        }
+      });
+
+      // --- Init ---
+      (async function init() {
+        initControls();
+        // Start with a random rip
+        await handleRandomNode({});
+        isInitialLoad = false;
+      })();
     </script>
-</body>
+  </body>
 </html>
