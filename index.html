@@ -287,6 +287,8 @@
       const ripTexture = createCircleTexture(0x4a90e2, NODE_RADIUS);
       const catTexture = createCircleTexture(0xff9f43, NODE_RADIUS);
       const massiveCatTexture = createMassiveTexture(NODE_RADIUS);
+      const catTimeTexture = createCircleTexture(0x9b59b6, NODE_RADIUS); // Purple
+      const catFeaturingTexture = createCircleTexture(0xe74c3c, NODE_RADIUS); // Red
 
       const MASSIVE_CATEGORIES = new Set([
         "Category:Rips",
@@ -304,6 +306,9 @@
         "Category:Playlists",
         "Category:Rips referencing other rips",
       ]);
+
+      const REGEX_TIME_RIPS = /^Category:(January|February|March|April|May|June|July|August|September|October|November|December) \d{4} rips$/;
+      const REGEX_FEATURING = /^Category:Rips featuring .+/;
 
       // Vibrate textures not strictly needed with scale animation, but keeping for compatibility if referenced
       const ripTextureVibrate = createCircleTexture(0x4a90e2, NODE_RADIUS + 1);
@@ -416,8 +421,46 @@
             tx += (Math.random() - 0.5) * i;
             ty += (Math.random() - 0.5) * i;
           }
-          linkGraphics.moveTo(sx, sy);
-          linkGraphics.lineTo(tx, ty);
+
+          const dx = tx - sx;
+          const dy = ty - sy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist > 0) {
+            // Calculate target node visual radius
+            const tgtNode = l.target;
+            const degree = tgtNode.degree || 1;
+            const factor = tgtNode.type === "category" ? 0.322 : 0.161;
+            const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
+            // Actual visual radius of the circle sprite
+            const radius = NODE_RADIUS * baseScale;
+            
+            const offset = radius + 3; // +3 for padding/stroke width
+            const angle = Math.atan2(dy, dx);
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            
+            const endX = tx - cos * offset;
+            const endY = ty - sin * offset;
+            
+            linkGraphics.moveTo(sx, sy);
+            linkGraphics.lineTo(endX, endY);
+            
+            // Draw Arrowhead
+            const arrowLen = 6;
+            // Left wing
+            linkGraphics.lineTo(
+              endX - arrowLen * Math.cos(angle - Math.PI / 6),
+              endY - arrowLen * Math.sin(angle - Math.PI / 6)
+            );
+            // Move back to tip
+            linkGraphics.moveTo(endX, endY);
+            // Right wing
+            linkGraphics.lineTo(
+              endX - arrowLen * Math.cos(angle + Math.PI / 6),
+              endY - arrowLen * Math.sin(angle + Math.PI / 6)
+            );
+          }
         });
         nodes.forEach((n) => {
           let sprite = nodeSprites.get(n.id);
@@ -847,8 +890,18 @@
         // Add sprites for new nodes
         nodes.forEach((n) => {
           if (!nodeSprites.has(n.id)) {
-            let tex = n.type === "category" ? catTexture : ripTexture;
-            if (n.isMassive) tex = massiveCatTexture;
+            let tex = ripTexture;
+            if (n.type === "category") {
+                if (n.isMassive) {
+                    tex = massiveCatTexture;
+                } else if (REGEX_TIME_RIPS.test(n.id)) {
+                    tex = catTimeTexture;
+                } else if (REGEX_FEATURING.test(n.id)) {
+                    tex = catFeaturingTexture;
+                } else {
+                    tex = catTexture;
+                }
+            }
 
             const sprite = new PIXI.Sprite(tex);
             sprite.anchor.set(0.5);
@@ -1575,15 +1628,23 @@
                     <div class="legend">
                         <div class="legend-item">
                             <div class="legend-color" style="background: #4a90e2;"></div>
-                            <span>Rip (Page)</span>
+                            <span>Rip</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #ff9f43;"></div>
                             <span>Category</span>
                         </div>
                         <div class="legend-item">
+                            <div class="legend-color" style="background: #9b59b6;"></div>
+                            <span>Time</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #e74c3c;"></div>
+                            <span>Joke</span>
+                        </div>
+                        <div class="legend-item">
                             <div class="legend-color" style="background: #000000; border: 1px solid #fff;"></div>
-                            <span>Massive Category</span>
+                            <span>Massive</span>
                         </div>
                     </div>
 
