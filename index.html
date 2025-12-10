@@ -576,7 +576,6 @@
 
         // --- 1. Wiki Window (JSFrame) ---
         if (showWiki) {
-          let needsWikiUpdate = false;
           if (!wikiFrame) {
             wikiFrame = jsFrame.create({
               title: "Wiki: " + displayTitle,
@@ -596,20 +595,13 @@
               updateSelectionVisuals();
               triggerSmartRecenter();
             });
-            wikiFrame.show();
-            triggerSmartRecenter();
-            needsWikiUpdate = true;
-          } else {
-            wikiFrame.setTitle("Wiki: " + displayTitle);
-            wikiFrame.show();
-            triggerSmartRecenter();
-            wikiFrame.requestFocus();
-            if (currentWikiTitle !== title) {
-              needsWikiUpdate = true;
-            }
           }
+          
+          wikiFrame.setTitle("Wiki: " + displayTitle);
+          wikiFrame.show();
+          wikiFrame.requestFocus();
 
-          if (needsWikiUpdate) {
+          if (currentWikiTitle !== title) {
             currentWikiTitle = title;
             updateSelectionVisuals();
             const wikiInner = document.getElementById("wikiInnerFrame");
@@ -658,8 +650,10 @@
               }
             })();
           }
-        } else if (wikiFrame) {
-          wikiFrame.close();
+          
+          try {
+             triggerSmartRecenter();
+          } catch(e) { console.error("Smart recenter error (wiki):", e); }
         }
 
         // --- 2. YouTube Window (JSFrame) ---
@@ -690,9 +684,14 @@
                   ? page.revisions[0].slots.main["*"]
                   : page.revisions[0]["*"];
               }
+              console.log("Raw Content Length:", rawContent.length);
+              console.log("Snippet:", rawContent.substring(0, 200));
+              
               const idMatch = /\|\s*id\s*=\s*([a-zA-Z0-9_-]+)/i.exec(
                 rawContent,
               );
+              console.log("ID Match:", idMatch);
+              
               if (idMatch) videoId = idMatch[1];
               else {
                 const linkMatch =
@@ -700,8 +699,8 @@
                     rawContent,
                   );
                 if (linkMatch) videoId = linkMatch[1];
-              }
             }
+
             if (videoId) {
               if (!youtubeFrame) {
                 youtubeFrame = jsFrame.create({
@@ -746,14 +745,20 @@
                 }
                 currentYoutubeVideoId = videoId;
               } else {
+                console.log(`YT Update: New=${videoId}, Curr=${currentYoutubeVideoId}, Player=${!!ytPlayer}`);
                 youtubeFrame.show();
-                triggerSmartRecenter();
+                try {
+                    triggerSmartRecenter();
+                } catch(e) {
+                    console.error("Smart recenter error:", e);
+                }
                 youtubeFrame.requestFocus();
                 if (
                   currentYoutubeVideoId !== videoId &&
                   ytPlayer &&
                   ytPlayer.loadVideoById
                 ) {
+                  console.log("Loading video...");
                   ytPlayer.loadVideoById(videoId);
                   currentYoutubeVideoId = videoId;
                 }
@@ -764,6 +769,7 @@
               console.log("No video ID found, skipping...");
               setTimeout(playNextRandomRip, 2000);
             }
+           }
           } catch (e) {
             if (e.name !== "AbortError")
               console.error("Error finding video:", e);
@@ -771,8 +777,6 @@
               setTimeout(playNextRandomRip, 2000);
             }
           }
-        } else if (youtubeFrame && !showYoutube) {
-          youtubeFrame.close();
         }
       }
 
@@ -1003,6 +1007,7 @@
       async function fetchApi(params, signal) {
         const url = new URL(API_BASE);
         url.search = new URLSearchParams({ ...params, origin: "*" });
+        console.log("Fetching API:", url.toString()); 
         try {
           const response = await fetch(url, { signal });
           if (!response.ok)
