@@ -776,17 +776,16 @@
         }
       }
 
-      function createRingGraphics(color, layerIndex) {
-        const gr = new PIXI.Graphics();
+      function drawRing(graphics, color, layerIndex) {
+        graphics.clear();
         const r = NODE_RADIUS * TEXTURE_RES_MULT;
         // Layer 0 (Wiki): Inner
         // Layer 1 (YouTube): Outer
-        const gap = (6 + layerIndex * 5) * TEXTURE_RES_MULT;
+        const gap = (5 + layerIndex * 5) * TEXTURE_RES_MULT;
         const thickness = 3 * TEXTURE_RES_MULT;
 
-        gr.lineStyle(thickness, color);
-        gr.drawCircle(0, 0, r + gap);
-        return gr;
+        graphics.lineStyle(thickness, color);
+        graphics.drawCircle(0, 0, r + gap);
       }
 
       function updateSelectionVisuals() {
@@ -797,10 +796,20 @@
           currentYoutubeNodeId,
         );
         nodeSprites.forEach((sprite, id) => {
-          if (sprite.wikiRing)
-            sprite.wikiRing.visible = id === currentWikiTitle;
-          if (sprite.ytRing)
-            sprite.ytRing.visible = id === currentYoutubeNodeId;
+          const isWiki = id === currentWikiTitle;
+          const isYt = id === currentYoutubeNodeId;
+
+          if (sprite.wikiRing) {
+            sprite.wikiRing.visible = isWiki;
+            if (isWiki) drawRing(sprite.wikiRing, 0x0088ff, 0);
+          }
+          if (sprite.ytRing) {
+            sprite.ytRing.visible = isYt;
+            if (isYt) {
+              const layer = isWiki ? 1 : 0;
+              drawRing(sprite.ytRing, 0xff0000, layer);
+            }
+          }
         });
       }
 
@@ -831,15 +840,26 @@
             sprite.nodeData = n;
 
             // Selection Rings
-            const wikiRing = createRingGraphics(0x0088ff, 0);
-            wikiRing.visible = n.id === currentWikiTitle;
+            const wikiRing = new PIXI.Graphics();
             sprite.addChild(wikiRing);
             sprite.wikiRing = wikiRing;
 
-            const ytRing = createRingGraphics(0xff0000, 1);
-            ytRing.visible = n.id === currentYoutubeNodeId;
+            const ytRing = new PIXI.Graphics();
             sprite.addChild(ytRing);
             sprite.ytRing = ytRing;
+
+            // Initial State
+            const isWiki = n.id === currentWikiTitle;
+            const isYt = n.id === currentYoutubeNodeId;
+
+            wikiRing.visible = isWiki;
+            if (isWiki) drawRing(wikiRing, 0x0088ff, 0);
+
+            ytRing.visible = isYt;
+            if (isYt) {
+              const layer = isWiki ? 1 : 0;
+              drawRing(ytRing, 0xff0000, layer);
+            }
 
             // Interactions
             sprite.on("pointerdown", onDragStart);
