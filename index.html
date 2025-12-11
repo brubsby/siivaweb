@@ -1211,6 +1211,7 @@
             });
 
             sprite.on("pointerout", () => {
+              if (dragState.isDragging && dragState.sprite === sprite) return;
               setHighlight(null);
             });
 
@@ -1267,6 +1268,13 @@
         dragState.sprite = this;
         dragState.didMove = false; // Reset for this drag interaction
         dragState.initialPointerPos = event.data.global.clone(); // Store initial position
+
+        // Force highlight on drag start (locks it in)
+        const neighbors = getNeighbors(this.nodeData);
+        setHighlight([this.nodeData, ...neighbors], this.nodeData.id);
+
+        // Bring to front
+        this.parent.addChild(this);
 
         d3.select(app.view).on(".zoom", null);
       }
