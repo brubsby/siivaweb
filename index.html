@@ -785,8 +785,9 @@
 
         // --- 2. YouTube Window (JSFrame) ---
         if (node.type === "rip" && showYoutube) {
-          currentYoutubeNodeId = node.id;
-          updateSelectionVisuals();
+          // Don't set the ring yet, wait until we find a video
+          // currentYoutubeNodeId = node.id; 
+          // updateSelectionVisuals();
           try {
             const rawData = await fetchApi(
               {
@@ -829,6 +830,10 @@
             }
 
             if (videoId) {
+              // Found a video! Now we can set the ring.
+              currentYoutubeNodeId = node.id;
+              updateSelectionVisuals();
+
               if (!youtubeFrame) {
                 youtubeFrame = jsFrame.create({
                   title: "YouTube Player",
@@ -894,12 +899,30 @@
               document.getElementById("autoplayUnvisitedCheck").checked
             ) {
               console.log("No video ID found, skipping...");
+              // Ensure we clear the ring if we thought we might have one (or just didn't find one)
+              if (currentYoutubeNodeId === node.id) {
+                  currentYoutubeNodeId = null;
+                  updateSelectionVisuals();
+              }
               setTimeout(playNextRandomRip, 2000);
+            } else {
+                // Not autoplaying, but no video found. Clear any existing ring selection.
+                 if (currentYoutubeNodeId === node.id) {
+                    currentYoutubeNodeId = null;
+                    updateSelectionVisuals();
+                }
             }
            }
           } catch (e) {
             if (e.name !== "AbortError")
               console.error("Error finding video:", e);
+            
+            // Clear ring on error
+            if (currentYoutubeNodeId === node.id) {
+                currentYoutubeNodeId = null;
+                updateSelectionVisuals();
+            }
+
             if (document.getElementById("autoplayUnvisitedCheck").checked) {
               setTimeout(playNextRandomRip, 2000);
             }
