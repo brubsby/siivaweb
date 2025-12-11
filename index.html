@@ -115,6 +115,7 @@
       }
       .legend {
         display: flex;
+        flex-wrap: wrap;
         gap: 10px;
         font-size: 11px;
         margin-bottom: 5px;
@@ -289,6 +290,17 @@
       const massiveCatTexture = createMassiveTexture(NODE_RADIUS);
       const catTimeTexture = createCircleTexture(0x9b59b6, NODE_RADIUS); // Purple
       const catFeaturingTexture = createCircleTexture(0xe74c3c, NODE_RADIUS); // Red
+      const catRipperTexture = createCircleTexture(0x2ecc71, NODE_RADIUS); // Green
+      const catGameTexture = createCircleTexture(0xf1c40f, NODE_RADIUS); // Yellow
+      const catEventTexture = createCircleTexture(0x00d2d3, NODE_RADIUS); // Cyan
+      const catAlbumTexture = createCircleTexture(0xff6b81, NODE_RADIUS); // Pink
+
+      const SPECIAL_ROOTS = {
+        "Category:Rips by author": "ripper",
+        "Category:Playlists": "game",
+        "Category:Rips by event": "event",
+        "Category:Rips by album": "album"
+      };
 
       const MASSIVE_CATEGORIES = new Set([
         "Category:Rips",
@@ -887,23 +899,35 @@
           }
         }
 
-        // Add sprites for new nodes
+        // Add/Update sprites
         nodes.forEach((n) => {
-          if (!nodeSprites.has(n.id)) {
-            let tex = ripTexture;
-            if (n.type === "category") {
-                if (n.isMassive) {
-                    tex = massiveCatTexture;
-                } else if (REGEX_TIME_RIPS.test(n.id)) {
-                    tex = catTimeTexture;
-                } else if (REGEX_FEATURING.test(n.id)) {
-                    tex = catFeaturingTexture;
-                } else {
-                    tex = catTexture;
-                }
-            }
+          // Determine correct texture
+          let desiredTex = ripTexture;
+          if (n.type === "category") {
+              if (n.isMassive) {
+                  desiredTex = massiveCatTexture;
+              } else if (n.specialType === "ripper") {
+                  desiredTex = catRipperTexture;
+              } else if (n.specialType === "game") {
+                  desiredTex = catGameTexture;
+              } else if (n.specialType === "event") {
+                  desiredTex = catEventTexture;
+              } else if (n.specialType === "album") {
+                  desiredTex = catAlbumTexture;
+              } else if (REGEX_TIME_RIPS.test(n.id)) {
+                  desiredTex = catTimeTexture;
+              } else if (REGEX_FEATURING.test(n.id)) {
+                  desiredTex = catFeaturingTexture;
+              } else {
+                  desiredTex = catTexture;
+              }
+          }
 
-            const sprite = new PIXI.Sprite(tex);
+          let sprite = nodeSprites.get(n.id);
+
+          if (!sprite) {
+            // Create new sprite
+            sprite = new PIXI.Sprite(desiredTex);
             sprite.anchor.set(0.5);
             sprite.eventMode = "static"; // Interactive
             sprite.cursor = "pointer";
@@ -941,16 +965,13 @@
 
             sprite.on("click", (e) => {
               if (dragState.didMove) {
-                // If there was movement, it was a drag, so don't activate
-                dragState.didMove = false; // Reset for next interaction
+                dragState.didMove = false;
                 return;
               }
-
               if (n.isMassive) {
                 n.headShakeStart = Date.now();
                 return;
               }
-
               showPage(n);
               expandNode(n);
             });
@@ -963,7 +984,6 @@
               const globalPos = sprite.getGlobalPosition();
               tooltip.style.display = "block";
               tooltip.innerText = n.id.replace(/^Category:/, "");
-              // HTML tooltip positioning
               tooltip.style.left = globalPos.x + 15 + "px";
               tooltip.style.top = globalPos.y - 10 + "px";
             });
@@ -974,10 +994,13 @@
 
             nodeContainer.addChild(sprite);
             nodeSprites.set(n.id, sprite);
-
-            // Set initial position
             sprite.x = n.x;
             sprite.y = n.y;
+          } else {
+             // Update existing sprite if texture changed
+             if (sprite.texture !== desiredTex) {
+                 sprite.texture = desiredTex;
+             }
           }
         });
 
@@ -1269,6 +1292,24 @@
             newNeighbors = [...memberNeighbors, ...parentNeighbors];
           }
 
+            // Check if WE are now discovered to be a child of a special root
+            // (i.e. one of our new parents is a special root)
+            newNeighbors.forEach(n => {
+                if (n.direction === 'parent' && SPECIAL_ROOTS[n.title]) {
+                    d.specialType = SPECIAL_ROOTS[n.title];
+                }
+            });
+
+            // If we are a special root, we define our children
+            if (SPECIAL_ROOTS[d.id]) {
+                d.specialType = SPECIAL_ROOTS[d.id];
+            }
+
+            // Propagate type to children
+            // Logic: If 'd' is a special type (e.g. 'ripper'), its category children become 'ripper'.
+            // Note: This assumes direct inheritance is valid for these types.
+            const typeToPropagate = d.specialType;
+
           d.vibrationStart = null;
           if (signal.aborted) return;
 
@@ -1297,6 +1338,16 @@
               const ny = d.y + Math.sin(angle) * dist;
 
               const nodeObj = addNode(n.title, type, nx, ny);
+
+              // Apply special type to new child node if applicable
+              if (typeToPropagate && n.direction === 'child' && type === 'category') {
+                  nodeObj.specialType = typeToPropagate;
+              }
+              // Also check if we just added a special root as a parent, logic handled above for 'd'
+              // but if nodeObj IS a special root, it should get its own type
+              if (SPECIAL_ROOTS[nodeObj.id]) {
+                  nodeObj.specialType = SPECIAL_ROOTS[nodeObj.id];
+              }
 
               if (n.direction === "parent") {
                 if (addLink(nodeObj.id, d.id)) batchAdded = true;
@@ -1641,6 +1692,22 @@
                         <div class="legend-item">
                             <div class="legend-color" style="background: #e74c3c;"></div>
                             <span>Joke</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #2ecc71;"></div>
+                            <span>Ripper</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f1c40f;"></div>
+                            <span>Game</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #00d2d3;"></div>
+                            <span>Event</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff6b81;"></div>
+                            <span>Album</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #000000; border: 1px solid #fff;"></div>
