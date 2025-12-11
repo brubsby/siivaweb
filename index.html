@@ -189,6 +189,7 @@
       let controlsFrame = null;
       let highlightedNodeIds = null; // Set<string> or null
       let labelMap = new Map(); // Map<nodeId, PIXI.Text>
+      let isStarburstActive = false;
 
       const labelStyle = new PIXI.TextStyle({
           fontFamily: 'Arial',
@@ -341,12 +342,22 @@
 
         if (!nodeList || nodeList.length === 0) {
           highlightedNodeIds = null;
+          isStarburstActive = false;
         } else {
           highlightedNodeIds = new Set(nodeList.map(n => n.id));
           
-          const sortedList = [...nodeList];
-          // Sort so primary is last (drawn on top)
-          if (primaryNodeId) {
+          let sortedList = [...nodeList];
+          const isStarburst = primaryNodeId && nodeList.length > 21;
+          isStarburstActive = isStarburst; // Update global state
+
+          // Sort so primary is last (drawn on top) unless starburst (we handle order manually)
+          // Actually, for starburst, we want neighbors sorted alphabetically for consistency
+          if (isStarburst) {
+               sortedList = sortedList.filter(n => n.id !== primaryNodeId).sort((a, b) => a.id.localeCompare(b.id));
+               // Add primary back at the end
+               const primary = nodeList.find(n => n.id === primaryNodeId);
+               if (primary) sortedList.push(primary);
+          } else if (primaryNodeId) {
               sortedList.sort((a, b) => {
                   if (a.id === primaryNodeId) return 1;
                   if (b.id === primaryNodeId) return -1;
@@ -355,27 +366,44 @@
           }
 
           // Create new labels
-          sortedList.forEach(n => {
+          sortedList.forEach((n, index) => {
               const isPrimary = n.id === primaryNodeId;
               const text = new PIXI.Text(n.id.replace(/^Category:/, ""), labelStyle);
+              
+              // Defaults
               text.anchor.set(0.5, 1.0); 
-              text.scale.set(1/viewport.scale.x); // Initial scale check
+              text.scale.set(1/viewport.scale.x); 
               
               if (isPrimary) {
-                  // Make primary significantly larger and ensure it pops
                   text.scale.x *= 1.3;
                   text.scale.y *= 1.3;
                   text.style.strokeThickness = 4;
-                  text.zIndex = 1000; // Pixi container sort (requires sortableChildren=true if used, but insertion order works for simple containers)
+                  text.zIndex = 1000;
+                  text.isPrimary = true;
+              } else if (isStarburst) {
+                  // Setup Starburst properties
+                  // Neighbors are indices 0 to length-2 (last is primary)
+                  const neighborCount = sortedList.length - 1;
+                  const angleStep = (Math.PI * 2) / neighborCount;
+                  const angle = index * angleStep;
+                  
+                  text.isStarburst = true;
+                  text.starburstAngle = angle;
+                  text.anchor.set(0, 0.5); // Left-middle alignment for radiating text
+                  
+                  // Flip text on left side
+                  if (angle > Math.PI / 2 && angle < 3 * Math.PI / 2) {
+                      text.anchor.set(1, 0.5); // Right-middle
+                      text.starburstRotation = angle + Math.PI;
+                  } else {
+                      text.starburstRotation = angle;
+                  }
               }
               
               text.resolution = 2; // sharper text
               
               labelContainer.addChild(text);
               labelMap.set(n.id, text);
-              
-              // Store special property for render loop updates
-              text.isPrimary = isPrimary;
           });
         }
       }
@@ -506,7 +534,8 @@
             const sHigh = highlightedNodeIds.has(l.source.id);
             const tHigh = highlightedNodeIds.has(l.target.id);
             
-            if (sHigh && tHigh) {
+            // In starburst mode, we suppress the connection lines to reduce clutter
+            if (sHigh && tHigh && !isStarburstActive) {
                alpha = 0.8;
                color = 0xcccccc;
                thickness = 2;
@@ -608,24 +637,66 @@
         // Update Labels
         if (labelMap.size > 0) {
             const currentScale = 1 / viewport.scale.x;
+            
+            // Find primary node position if any starburst labels exist
+            let primaryNode = null;
+            // Iterate once to find primary if needed (could optimize, but map is small)
+            for (const [id, label] of labelMap) {
+                if (label.isPrimary) {
+                    primaryNode = nodes.find(node => node.id === id);
+                    break;
+                }
+            }
+
             for (const [id, label] of labelMap) {
                 const n = nodes.find(node => node.id === id);
                 if (n) {
-                    // Position label above the node
-                    // We need to account for node radius + some padding
-                    // Node radius is roughly NODE_RADIUS (10) * baseScale
-                    const degree = n.degree || 0;
-                    const factor = n.type === "category" ? 0.322 : 0.161;
-                    const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
-                    const radius = NODE_RADIUS * baseScale;
-                    
-                    label.x = n.x;
-                    label.y = n.y - radius - 5 * currentScale; // 5px padding relative to zoom
-                    label.scale.set(currentScale); // Keep text constant size on screen?
-                    // actually if we want constant size on screen we set scale to inverse of viewport.
-                    // If we want it to zoom with the world, we set it to 1.
-                    // Let's stick with constant screen size (readable at any zoom)
                     let finalScale = currentScale;
+
+                    if (label.isStarburst && primaryNode && n !== primaryNode) {
+                        // Starburst Mode: Label radiates outward from the neighbor node,
+                        // pointing away from the primary node.
+                        
+                        // Vector from Primary -> Neighbor
+                        const dx = n.x - primaryNode.x;
+                        const dy = n.y - primaryNode.y;
+                        const angle = Math.atan2(dy, dx); // Angle from primary to neighbor
+
+                        // Neighbor Radius
+                        const degree = n.degree || 0;
+                        const factor = n.type === "category" ? 0.322 : 0.161;
+                        const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
+                        const radius = NODE_RADIUS * baseScale;
+                        
+                        const distance = radius + 5 * currentScale;
+
+                        label.x = n.x + Math.cos(angle) * distance;
+                        label.y = n.y + Math.sin(angle) * distance;
+                        
+                        // Text Rotation & Anchor Adjustment
+                        // We want text to read left-to-right mostly
+                        label.anchor.set(0, 0.5); // Default: Text starts at point, radiating out
+                        
+                        let rotation = angle;
+                        if (rotation > Math.PI / 2 || rotation < -Math.PI / 2) {
+                            rotation += Math.PI; // Flip 180
+                            label.anchor.set(1, 0.5); // Text ends at point, radiating in (visually out)
+                        }
+                        label.rotation = rotation;
+                        
+                    } else {
+                        // Normal Mode (or Primary Node in Starburst): Position above node
+                        const degree = n.degree || 0;
+                        const factor = n.type === "category" ? 0.322 : 0.161;
+                        const baseScale = Math.max(1.0, 1.0 + factor * Math.log(degree));
+                        const radius = NODE_RADIUS * baseScale;
+                        
+                        label.x = n.x;
+                        label.y = n.y - radius - 5 * currentScale;
+                        label.anchor.set(0.5, 1.0);
+                        label.rotation = 0; 
+                    }
+
                     if (label.isPrimary) {
                         finalScale *= 1.3;
                     }
