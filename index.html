@@ -304,6 +304,8 @@
         "Category:Tracks": "track"
       };
 
+      let specialCategoryCache = new Map(); // Map<string, Set<string>>: specialType -> Set(titles)
+
       const MASSIVE_CATEGORIES = new Set([
         "Category:Rips",
         "Category:Mashups",
@@ -1262,7 +1264,7 @@
         }));
       }
 
-      async function getCategoryMembers(title, signal) {
+      async function getCategoryMembers(title, signal, delayBetweenPages = 0) {
         let allMembers = [];
         let continueToken = null;
 
@@ -1288,12 +1290,32 @@
 
           if (data.continue && data.continue.cmcontinue) {
             continueToken = data.continue.cmcontinue;
+            if (delayBetweenPages > 0) {
+                await wait(delayBetweenPages, signal);
+            }
           } else {
             continueToken = null;
           }
         } while (continueToken);
 
         return allMembers.map((c) => ({ title: c.title, ns: c.ns }));
+      }
+
+      async function loadCategoryCache() {
+          try {
+              const res = await fetch('assets/category_cache.json');
+              if (res.ok) {
+                  const data = await res.json();
+                  Object.entries(data).forEach(([type, list]) => {
+                      specialCategoryCache.set(type, new Set(list));
+                  });
+                  console.log("Loaded category cache:", specialCategoryCache);
+              } else {
+                  console.log("No local category cache found (assets/category_cache.json).");
+              }
+          } catch (e) {
+              console.warn("Failed to load category cache:", e);
+          }
       }
 
       function addNode(id, type, x, y) {
@@ -1309,6 +1331,15 @@
           visited: false,
           isMassive: isMassive,
         };
+
+        // Check cache for special type
+        for (const [specialType, set] of specialCategoryCache) {
+            if (set.has(id)) {
+                newNode.specialType = specialType;
+                break;
+            }
+        }
+
         nodes.push(newNode);
         return newNode;
       }
@@ -1840,6 +1871,9 @@
                     ${isDebugMode ? `
                     <div class="input-group">
                         <button id="toggleDebugBtn" style="width: 100%; background: #555;">Toggle Debug View</button>
+                    </div>
+                    <div class="input-group">
+                        <button id="generateCacheBtn" style="width: 100%; background: #a55;">Generate Category Cache</button>
                     </div>` : ''}
                     
                     <div class="control-group" style="margin-top: 10px; gap: 8px;">
@@ -1961,6 +1995,61 @@
                 console.log("Debug View:", isDebugView);
                 calculateOptimalCenter();
               });
+
+            document.getElementById("generateCacheBtn").addEventListener("click", async () => {
+                console.log("Starting cache generation...");
+                const cache = {}; 
+                // Initialize arrays for each special type found in values of SPECIAL_ROOTS
+                Object.values(SPECIAL_ROOTS).forEach(type => {
+                    cache[type] = [];
+                });
+
+                const roots = Object.entries(SPECIAL_ROOTS);
+                
+                // Visual feedback: Start slightly off-center
+                let startX = window.innerWidth / 2;
+                let startY = window.innerHeight / 2;
+
+                for (const [rootTitle, type] of roots) {
+                    console.log(`Fetching members for ${rootTitle} (${type})...`);
+                    
+                    // Visual feedback: Add node for what we are scanning
+                    // This lets the user see progress visually
+                    const rootNode = addNode(rootTitle, "category", startX + (Math.random()-0.5)*50, startY + (Math.random()-0.5)*50);
+                    rootNode.visited = true; // Mark visited so it looks "active"
+                    rootNode.specialType = type; // Color it immediately
+                    // We DO NOT expand it (add links/children to graph) to keep graph clean
+                    restartSimulation();
+
+                    try {
+                        // Wait 1s between pages for large categories
+                        const members = await getCategoryMembers(rootTitle, globalAbortController.signal, 1000);
+                        if (members) {
+                            members.forEach(m => {
+                                if (cache[type]) {
+                                    cache[type].push(m.title);
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error(`Error fetching ${rootTitle}:`, e);
+                    }
+
+                    // Be nice to the API - Wait 2s between roots
+                    await wait(2000, globalAbortController.signal);
+                }
+                
+                console.log(`Cache generation complete.`);
+                
+                // Download file
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cache));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "category_cache.json");
+                document.body.appendChild(downloadAnchorNode); // required for firefox
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            });
         }
 
         document
@@ -2406,6 +2495,7 @@
 
       // --- Init ---
       (async function init() {
+        await loadCategoryCache();
         initControls();
         // Start with a random rip
         await handleRandomNode({});
