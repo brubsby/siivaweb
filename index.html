@@ -2418,6 +2418,7 @@
       const TRACKING_DURATION = 4000;
 
       function focusOnNode(node) {
+        setHighlight(null);
         trackingNode = node;
         trackingStartTime = Date.now();
         trackingStartTransform = d3.zoomTransform(app.view);
