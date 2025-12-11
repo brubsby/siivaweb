@@ -329,6 +329,26 @@
       // Map to keep track of sprites {nodeId: Sprite}
       const nodeSprites = new Map();
 
+      // Highlight State
+      let highlightedNodeIds = null; // Set<string> or null
+
+      function setHighlight(nodeList) {
+        if (!nodeList || nodeList.length === 0) {
+          highlightedNodeIds = null;
+        } else {
+          highlightedNodeIds = new Set(nodeList.map(n => n.id));
+        }
+      }
+
+      function getNeighbors(node) {
+        const neighbors = [];
+        links.forEach((l) => {
+          if (l.source.id === node.id) neighbors.push(l.target);
+          else if (l.target.id === node.id) neighbors.push(l.source);
+        });
+        return neighbors;
+      }
+
       // --- D3 Simulation ---
       const simulation = d3
         .forceSimulation(nodes)
@@ -415,7 +435,10 @@
         simulation.tick();
         const now = Date.now();
         linkGraphics.clear();
-        linkGraphics.lineStyle(1, 0x999999, 0.6);
+        
+        // Base style for non-highlighted links
+        const isHighlightActive = highlightedNodeIds !== null;
+        
         links.forEach((l) => {
           let sx = l.source.x,
             sy = l.source.y;
@@ -433,6 +456,27 @@
             tx += (Math.random() - 0.5) * i;
             ty += (Math.random() - 0.5) * i;
           }
+
+          // Determine Link Style
+          let alpha = 0.6;
+          let color = 0x999999;
+          let thickness = 1;
+          
+          if (isHighlightActive) {
+            const sHigh = highlightedNodeIds.has(l.source.id);
+            const tHigh = highlightedNodeIds.has(l.target.id);
+            
+            if (sHigh && tHigh) {
+               alpha = 0.8;
+               color = 0xcccccc;
+               thickness = 2;
+            } else {
+               alpha = 0.1;
+               color = 0x555555;
+            }
+          }
+
+          linkGraphics.lineStyle(thickness, color, alpha);
 
           const dx = tx - sx;
           const dy = ty - sy;
@@ -459,7 +503,7 @@
             linkGraphics.lineTo(endX, endY);
             
             // Draw Arrowhead
-            const arrowLen = 6;
+            const arrowLen = 6 + (thickness - 1) * 2;
             // Left wing
             linkGraphics.lineTo(
               endX - arrowLen * Math.cos(angle - Math.PI / 6),
@@ -477,6 +521,17 @@
         nodes.forEach((n) => {
           let sprite = nodeSprites.get(n.id);
           if (!sprite) return;
+          
+          // Check Highlight
+          let targetAlpha = 1.0;
+          if (isHighlightActive) {
+            if (highlightedNodeIds.has(n.id)) {
+                targetAlpha = 1.0;
+            } else {
+                targetAlpha = 0.1;
+            }
+          }
+
           let dx = 0,
             dy = 0;
           const degree = n.degree || 0;
@@ -490,7 +545,7 @@
             dy = (Math.random() - 0.5) * intensity;
             sprite.tint = 0xffcc00;
             sprite.scale.set(finalScale * 1.1);
-            sprite.alpha = 1.0;
+            sprite.alpha = targetAlpha;
           } else if (n.headShakeStart) {
             const elapsed = now - n.headShakeStart;
             if (elapsed < 500) {
@@ -500,11 +555,11 @@
             }
             sprite.tint = n.visited ? 0xffffff : 0x999999;
             sprite.scale.set(finalScale);
-            sprite.alpha = 1.0;
+            sprite.alpha = targetAlpha;
           } else {
             sprite.tint = n.visited ? 0xffffff : 0x999999;
             sprite.scale.set(finalScale);
-            sprite.alpha = 1.0;
+            sprite.alpha = targetAlpha;
           }
           sprite.x = n.x + dx;
           sprite.y = n.y + dy;
@@ -986,10 +1041,17 @@
               tooltip.innerText = n.id.replace(/^Category:/, "");
               tooltip.style.left = globalPos.x + 15 + "px";
               tooltip.style.top = globalPos.y - 10 + "px";
+              
+              // Highlight Logic
+              if (!dragState.isDragging) {
+                  const neighbors = getNeighbors(n);
+                  setHighlight([n, ...neighbors]);
+              }
             });
 
             sprite.on("pointerout", () => {
               tooltip.style.display = "none";
+              setHighlight(null);
             });
 
             nodeContainer.addChild(sprite);
