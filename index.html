@@ -294,12 +294,14 @@
       const catGameTexture = createCircleTexture(0xf1c40f, NODE_RADIUS); // Yellow
       const catEventTexture = createCircleTexture(0x00d2d3, NODE_RADIUS); // Cyan
       const catAlbumTexture = createCircleTexture(0xff6b81, NODE_RADIUS); // Pink
+      const ripTrackTexture = createCircleTexture(0x1f4e79, NODE_RADIUS); // Dark Blue
 
       const SPECIAL_ROOTS = {
         "Category:Rips by author": "ripper",
         "Category:Playlists": "game",
         "Category:Rips by event": "event",
-        "Category:Rips by album": "album"
+        "Category:Rips by album": "album",
+        "Category:Tracks": "track"
       };
 
       const MASSIVE_CATEGORIES = new Set([
@@ -976,6 +978,10 @@
               } else {
                   desiredTex = catTexture;
               }
+          } else if (n.type === "rip") {
+              if (n.specialType === "track") {
+                  desiredTex = ripTrackTexture;
+              }
           }
 
           let sprite = nodeSprites.get(n.id);
@@ -1402,8 +1408,12 @@
               const nodeObj = addNode(n.title, type, nx, ny);
 
               // Apply special type to new child node if applicable
-              if (typeToPropagate && n.direction === 'child' && type === 'category') {
-                  nodeObj.specialType = typeToPropagate;
+              if (typeToPropagate && n.direction === 'child') {
+                  if (type === 'category') {
+                      nodeObj.specialType = typeToPropagate;
+                  } else if (type === 'rip' && typeToPropagate === 'track') {
+                      nodeObj.specialType = typeToPropagate;
+                  }
               }
               // Also check if we just added a special root as a parent, logic handled above for 'd'
               // but if nodeObj IS a special root, it should get its own type
@@ -1739,39 +1749,43 @@
                     </div>
                     
                     <div class="legend">
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-rip" style="cursor: pointer;">
                             <div class="legend-color" style="background: #4a90e2;"></div>
                             <span>Rip</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-track" style="cursor: pointer;">
+                            <div class="legend-color" style="background: #1f4e79;"></div>
+                            <span>Track</span>
+                        </div>
+                        <div class="legend-item" id="legend-category" style="cursor: pointer;">
                             <div class="legend-color" style="background: #ff9f43;"></div>
                             <span>Category</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-time" style="cursor: pointer;">
                             <div class="legend-color" style="background: #9b59b6;"></div>
                             <span>Time</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-joke" style="cursor: pointer;">
                             <div class="legend-color" style="background: #e74c3c;"></div>
                             <span>Joke</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-ripper" style="cursor: pointer;">
                             <div class="legend-color" style="background: #2ecc71;"></div>
                             <span>Ripper</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-game" style="cursor: pointer;">
                             <div class="legend-color" style="background: #f1c40f;"></div>
                             <span>Game</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-event" style="cursor: pointer;">
                             <div class="legend-color" style="background: #00d2d3;"></div>
                             <span>Event</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-album" style="cursor: pointer;">
                             <div class="legend-color" style="background: #ff6b81;"></div>
                             <span>Album</span>
                         </div>
-                        <div class="legend-item">
+                        <div class="legend-item" id="legend-massive" style="cursor: pointer;">
                             <div class="legend-color" style="background: #000000; border: 1px solid #fff;"></div>
                             <span>Massive</span>
                         </div>
@@ -1956,6 +1970,33 @@
             simulation.force("link").distance(getLinkDistance);
             simulation.alpha(1).restart();
           });
+
+        // --- Legend Highlighting ---
+        const legendMap = [
+            { id: 'legend-rip', filter: (n) => n.type === 'rip' && n.specialType !== 'track' },
+            { id: 'legend-track', filter: (n) => n.type === 'rip' && n.specialType === 'track' },
+            { id: 'legend-category', filter: (n) => n.type === 'category' && !n.isMassive && !n.specialType && !REGEX_TIME_RIPS.test(n.id) && !REGEX_FEATURING.test(n.id) },
+            { id: 'legend-time', filter: (n) => n.type === 'category' && REGEX_TIME_RIPS.test(n.id) },
+            { id: 'legend-joke', filter: (n) => n.type === 'category' && REGEX_FEATURING.test(n.id) },
+            { id: 'legend-ripper', filter: (n) => n.type === 'category' && n.specialType === 'ripper' },
+            { id: 'legend-game', filter: (n) => n.type === 'category' && n.specialType === 'game' },
+            { id: 'legend-event', filter: (n) => n.type === 'category' && n.specialType === 'event' },
+            { id: 'legend-album', filter: (n) => n.type === 'category' && n.specialType === 'album' },
+            { id: 'legend-massive', filter: (n) => n.isMassive }
+        ];
+
+        legendMap.forEach(item => {
+            const el = document.getElementById(item.id);
+            if (el) {
+                el.addEventListener('mouseenter', () => {
+                    const matches = nodes.filter(item.filter);
+                    setHighlight(matches);
+                });
+                el.addEventListener('mouseleave', () => {
+                    setHighlight(null);
+                });
+            }
+        });
 
         document
           .getElementById("autoplayUnvisitedCheck")
