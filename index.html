@@ -322,6 +322,7 @@
         "Category:Playlists",
         "Category:Rips referencing other rips",
         "Category:Medley rips",
+        "Category:Rips featuring Meet the Flintstones",
       ]);
 
       const REGEX_TIME_RIPS = /^Category:(January|February|March|April|May|June|July|August|September|October|November|December) \d{4} rips$/;
@@ -514,17 +515,39 @@
             sy = l.source.y;
           let tx = l.target.x,
             ty = l.target.y;
+            
+          // Source Vibration/Shake
           if (l.source.vibrationStart) {
             const e = now - l.source.vibrationStart;
             const i = Math.min(e * 0.02, 5);
             sx += (Math.random() - 0.5) * i;
             sy += (Math.random() - 0.5) * i;
+          } else if (l.source.headShakeStart) {
+             const elapsed = now - l.source.headShakeStart;
+             const duration = 500;
+             const speed = l.source.headShakeSpeed || 0.05;
+             if (elapsed < duration) {
+                 sx += Math.sin(elapsed * speed) * 3;
+             } else {
+                 l.source.headShakeStart = null;
+             }
           }
+
+          // Target Vibration/Shake
           if (l.target.vibrationStart) {
             const e = now - l.target.vibrationStart;
             const i = Math.min(e * 0.02, 5);
             tx += (Math.random() - 0.5) * i;
             ty += (Math.random() - 0.5) * i;
+          } else if (l.target.headShakeStart) {
+             const elapsed = now - l.target.headShakeStart;
+             const duration = 500;
+             const speed = l.target.headShakeSpeed || 0.05;
+             if (elapsed < duration) {
+                 tx += Math.sin(elapsed * speed) * 3;
+             } else {
+                 l.target.headShakeStart = null;
+             }
           }
 
           // Determine Link Style
@@ -619,8 +642,10 @@
             sprite.alpha = targetAlpha;
           } else if (n.headShakeStart) {
             const elapsed = now - n.headShakeStart;
-            if (elapsed < 500) {
-              dx = Math.sin(elapsed * 0.05) * 3;
+            const duration = 500;
+            const speed = n.headShakeSpeed || 0.05;
+            if (elapsed < duration) {
+              dx = Math.sin(elapsed * speed) * 3;
             } else {
               n.headShakeStart = null;
             }
@@ -1217,8 +1242,20 @@
                 return;
               }
               if (n.isMassive) {
-                n.headShakeStart = Date.now();
-                return;
+                const now = Date.now();
+                if (n.lastClickTime && (now - n.lastClickTime > 10000)) {
+                    n.headShakeCount = 0;
+                }
+                n.lastClickTime = now;
+                n.headShakeCount = (n.headShakeCount || 0) + 1;
+
+                if (n.headShakeCount <= 5) {
+                    n.headShakeStart = now;
+                    // Increase speed: Start slow (~1 cycle), increase gradually
+                    n.headShakeSpeed = 0.005 + (n.headShakeCount * 0.008);
+                    return;
+                }
+                // If count > 5, we allow it to expand
               }
               showPage(n);
               expandNode(n, e.shiftKey);
@@ -1516,6 +1553,7 @@
           degree: 0,
           visited: false,
           isMassive: isMassive,
+          headShakeCount: 0,
         };
 
         // Check cache for special type
@@ -2066,7 +2104,7 @@
                         </div>
                     </div>
 
-                    <div class="input-group" style="margin-bottom: 10px;">
+                    <div class="input-group" style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
                         <input type="text" id="searchInput" placeholder="Search visible nodes... (ctrl+f)" value="">
                     </div>
                     
@@ -2074,33 +2112,33 @@
 
                     <div class="input-group">
                         <input type="text" id="pageInput" placeholder="Rip Title" value="">
-                        <button id="addPageBtn" style="white-space: nowrap; background: #d68030;">Add Rip</button>
+                        <button id="addPageBtn" style="white-space: nowrap; background: #357abd;">Add Rip</button>
                     </div>
                     <div class="input-group">
                         <input type="text" id="catInput" placeholder="Category" value="">
-                        <button id="addCatBtn" style="white-space: nowrap; background: #d68030;">Add Cat</button>
+                        <button id="addCatBtn" style="white-space: nowrap; background: #357abd;">Add Cat</button>
                     </div>
                     <div class="input-group">
-                        <button id="randomBtn" style="width: 100%; background: #d68030; white-space: nowrap;">Add Random Rip</button>
+                        <button id="randomBtn" style="width: 100%; background: #357abd; white-space: nowrap;">Add Random Rip</button>
                     </div>
                     <div class="input-group">
-                        <button id="randomCatBtn" style="width: 100%; background: #d68030; white-space: nowrap;">Add Random Category</button>
+                        <button id="randomCatBtn" style="width: 100%; background: #357abd; white-space: nowrap;">Add Random Category</button>
                     </div>
                     <div class="input-group">
-                        <button id="selectRandomUnvisitedBtn" style="width: 100%; background: #4d8a7c; white-space: nowrap;">Select Random Unvisited Rip</button>
+                        <button id="selectRandomUnvisitedBtn" style="width: 100%; background: #357abd; white-space: nowrap;">Select Random Unvisited Rip</button>
                     </div>
                     <div class="input-group">
-                        <button id="selectRandomUnvisitedCatBtn" style="width: 100%; background: #4d8a7c; white-space: nowrap;">Select Random Unvisited Category</button>
+                        <button id="selectRandomUnvisitedCatBtn" style="width: 100%; background: #357abd; white-space: nowrap;">Select Random Unvisited Category</button>
                     </div>
                     <div class="input-group">
-                        <button id="centerOnSelectedBtn" style="width: 100%; background: #4d8a7c;">Center on Selected</button>
+                        <button id="centerOnSelectedBtn" style="width: 100%; background: #357abd;">Center on Selected</button>
                     </div>
                     ${isDebugMode ? `
                     <div class="input-group">
-                        <button id="toggleDebugBtn" style="width: 100%; background: #555;">Toggle Debug View</button>
+                        <button id="toggleDebugBtn" style="width: 100%; background: #357abd;">Toggle Debug View</button>
                     </div>
                     <div class="input-group">
-                        <button id="generateCacheBtn" style="width: 100%; background: #a55;">Generate Category Cache</button>
+                        <button id="generateCacheBtn" style="width: 100%; background: #357abd;">Generate Category Cache</button>
                     </div>` : ''}
                     
                     <div class="control-group" style="margin-top: 10px; gap: 8px;">
