@@ -1440,10 +1440,10 @@
           },
           signal,
         );
-        if (!data.query || !data.query.pages) return null; // Error/Missing
+        if (!data.query || !data.query.pages) return undefined; // Error/Missing Data (Network/Server)
         const pages = data.query.pages;
         const pageId = Object.keys(pages)[0];
-        if (pageId === "-1") return null; // Page doesn't exist
+        if (pageId === "-1") return null; // Page explicitly doesn't exist
         return (pages[pageId].categories || []).map((c) => ({
           title: c.title,
           ns: c.ns,
@@ -1577,6 +1577,11 @@
               );
               restartSimulation();
               return;
+            } else if (categories === undefined) {
+                console.error(`API Error: Could not fetch categories for ${d.id}`);
+                d.expanding = false;
+                d.vibrationStart = null;
+                return; // Stop expansion, but keep node
             }
             newNeighbors = categories.map((cat) => ({
               ...cat,
