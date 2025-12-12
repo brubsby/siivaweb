@@ -1238,7 +1238,14 @@
 
             sprite.on("pointerout", () => {
               if (dragState.isDragging && dragState.sprite === sprite) return;
-              setHighlight(null);
+              
+              const searchVal = document.getElementById("searchInput").value.toLowerCase().trim();
+              if (searchVal) {
+                  const matches = nodes.filter(n => n.id.toLowerCase().includes(searchVal));
+                  setHighlight(matches);
+              } else {
+                  setHighlight(null);
+              }
             });
 
             nodeContainer.addChild(sprite);
@@ -1348,6 +1355,12 @@
           globalAbortController.abort();
           globalAbortController = new AbortController();
           console.log("Expansion aborted by user.");
+          
+          const searchInput = document.getElementById("searchInput");
+          if (searchInput) {
+              searchInput.value = "";
+              searchInput.blur();
+          }
           setHighlight(null);
         }
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
