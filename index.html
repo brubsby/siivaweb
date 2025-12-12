@@ -197,6 +197,7 @@
           fill: 0xffffff,
           stroke: 0x000000,
           strokeThickness: 3,
+          lineJoin: 'round',
           align: 'center',
           wordWrap: false
       });
@@ -1220,7 +1221,7 @@
                 return;
               }
               showPage(n);
-              expandNode(n);
+              expandNode(n, e.shiftKey);
             });
 
             sprite.on("rightclick", (e) => {
@@ -1530,7 +1531,7 @@
         updatePixiObjects();
       }
 
-      async function expandNode(d) {
+      async function expandNode(d, connectOnly = false) {
         if (d.expanding) return;
         d.expanding = true;
         d.visited = true; // Mark as visited/expanded
@@ -1590,12 +1591,40 @@
             }
 
             // Propagate type to children
-            // Logic: If 'd' is a special type (e.g. 'ripper'), its category children become 'ripper'.
-            // Note: This assumes direct inheritance is valid for these types.
             const typeToPropagate = d.specialType;
 
           d.vibrationStart = null;
           if (signal.aborted) return;
+
+          // --- CONNECT ONLY MODE ---
+          if (connectOnly) {
+              let linksAdded = false;
+              // Only look for existing nodes that match neighbors
+              const neighborSet = new Set(newNeighbors.map(n => n.title));
+              
+              nodes.forEach(existingNode => {
+                  if (neighborSet.has(existingNode.id)) {
+                      // Check direction from neighbor data to determine source/target
+                      const neighborData = newNeighbors.find(n => n.title === existingNode.id);
+                      if (neighborData) {
+                          let added = false;
+                          if (neighborData.direction === "parent") {
+                              added = addLink(existingNode.id, d.id);
+                          } else {
+                              added = addLink(d.id, existingNode.id);
+                          }
+                          if (added) linksAdded = true;
+                      }
+                  }
+              });
+
+              if (linksAdded) {
+                  restartSimulation();
+              }
+              d.expanding = false;
+              return;
+          }
+          // -------------------------
 
           const angleStep = (2 * Math.PI) / (newNeighbors.length || 1);
 
@@ -1959,6 +1988,7 @@
                 <div id="controlsInner" class="controls-content">
                     <div class="help-text">
                         <strong>Left-click</strong> node to fetch connections.<br>
+                        <strong>Shift+Left-click</strong> to only connect to existing nodes.<br>
                         <strong>Right-click</strong> node to prune leaves, and again for self.<br>
                         <strong>Drag</strong> background to pan, wheel to zoom.<br>
                         <strong>Esc</strong> to cancel expansion.<br>
@@ -2072,7 +2102,7 @@
           left: window.innerWidth - 320,
           top: 20,
           width: 300,
-          height: 640,
+          height: 800,
           movable: true,
           resizable: true,
           html: controlsHtml,
