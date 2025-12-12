@@ -320,6 +320,7 @@
         "Category:YTPMV rips",
         "Category:Playlists",
         "Category:Rips referencing other rips",
+        "Category:Medley rips",
       ]);
 
       const REGEX_TIME_RIPS = /^Category:(January|February|March|April|May|June|July|August|September|October|November|December) \d{4} rips$/;
@@ -734,9 +735,12 @@
 
       // --- Wiki Worker Setup ---
       const wikiWorkerCode =
+        "function wait(ms) { return new Promise(r => setTimeout(r, ms)); }\n" +
         "self.onmessage = async (e) => {\n" +
         "    const { reqId, title, displayTitle } = e.data;\n" +
-        "    try {\n" +
+        "    const maxRetries = 3;\n" +
+        "    for (let attempt = 0; attempt <= maxRetries; attempt++) {\n" +
+        "      try {\n" +
         "        const params = new URLSearchParams({\n" +
         "            action: 'parse',\n" +
         "            page: title,\n" +
@@ -748,6 +752,11 @@
         "        });\n" +
         "        const res = await fetch('https://siivagunner.wiki/w/api.php?' + params.toString());\n" +
         "        if (!res.ok) {\n" +
+        "            // Retry on server errors (5xx) or rate limits (429)\n" +
+        "            if ((res.status >= 500 || res.status === 429) && attempt < maxRetries) {\n" +
+        "               await wait(500 * Math.pow(2, attempt));\n" +
+        "               continue;\n" +
+        "            }\n" +
         "            throw new Error('Wiki API Error: ' + res.status + ' ' + res.statusText);\n" +
         "        }\n" +
         "        const rawText = await res.text();\n" +
@@ -755,7 +764,11 @@
         "        try {\n" +
         "            data = JSON.parse(rawText);\n" +
         "        } catch (e) {\n" +
-        "            // It's likely an HTML error page or 'MediaWiki ...' internal error\n" +
+        "            // If invalid JSON (HTML error page), check retry\n" +
+        "            if (attempt < maxRetries) {\n" +
+        "               await wait(500 * Math.pow(2, attempt));\n" +
+        "               continue;\n" +
+        "            }\n" +
         "            throw new Error('Invalid JSON from Wiki: ' + rawText.substring(0, 150));\n" +
         "        }\n" +
         "        if (data.parse && data.parse.text) {\n" +
@@ -768,11 +781,23 @@
         '            const html = \'<!DOCTYPE html><html><head><meta name="referrer" content="no-referrer"><base href="https://siivagunner.wiki/wiki/" target="_blank"><style> ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-track { background: #1e1e1e; } ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; } ::-webkit-scrollbar-thumb:hover { background: #555; } ::-webkit-scrollbar-corner { background: #1e1e1e; } body { font-family: sans-serif; padding: 15px; color: #ccc; line-height: 1.5; background-color: #1e1e1e; } img { max-width: 100%; height: auto; } a { color: #4a90e2; text-decoration: none; } a:hover { text-decoration: underline; } h1, h2, h3, h4, h5, h6 { color: #eee; border-bottom: 1px solid #444; } .mw-parser-output { max-width: 100%; } table, .infobox { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; } th { background-color: #333 !important; color: #eee !important; border-color: #444 !important; } td { background-color: #222 !important; color: #ccc !important; border-color: #444 !important; } caption { color: #eee !important; } </style></head><body><h2>\' + displayTitle + \'</h2>\' + content + \'</body></html>\';\n' +
         "            const blob = new Blob([html], { type: 'text/html' });\n" +
         "            self.postMessage({ reqId, success: true, blob });\n" +
+        "            return;\n" +
+        "        } else if (data.error && attempt < maxRetries) {\n" +
+        "             // API level error, retry if possible\n" +
+        "             await wait(500 * Math.pow(2, attempt));\n" +
+        "             continue;\n" +
         "        } else {\n" +
         "            self.postMessage({ reqId, success: false, error: 'No content found' });\n" +
+        "            return;\n" +
         "        }\n" +
-        "    } catch (err) {\n" +
-        "        self.postMessage({ reqId, success: false, error: err.message });\n" +
+        "      } catch (err) {\n" +
+        "          if (attempt < maxRetries) {\n" +
+        "              await wait(500 * Math.pow(2, attempt));\n" +
+        "              continue;\n" +
+        "          }\n" +
+        "          self.postMessage({ reqId, success: false, error: err.message });\n" +
+        "          return;\n" +
+        "      }\n" +
         "    }\n" +
         "};";
       const wikiWorkerBlob = new Blob([wikiWorkerCode], {
