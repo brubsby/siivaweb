@@ -1348,6 +1348,16 @@
           globalAbortController.abort();
           globalAbortController = new AbortController();
           console.log("Expansion aborted by user.");
+          setHighlight(null);
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            const searchInput = document.getElementById("searchInput");
+            if (searchInput) {
+                searchInput.focus();
+                // Optional: Select all text
+                searchInput.select();
+            }
         }
       });
 
@@ -2038,6 +2048,12 @@
                         </div>
                     </div>
 
+                    <div class="input-group" style="margin-bottom: 10px;">
+                        <input type="text" id="searchInput" placeholder="Search visible nodes..." value="">
+                    </div>
+                    
+                    <div style="border-bottom: 1px solid #444; margin-bottom: 10px;"></div>
+
                     <div class="input-group">
                         <input type="text" id="pageInput" placeholder="Rip Title" value="">
                         <button id="addPageBtn" style="white-space: nowrap; background: #d68030;">Add Rip</button>
@@ -2179,6 +2195,16 @@
               });
             }
           });
+
+        document.getElementById("searchInput").addEventListener("input", (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            if (!val) {
+                setHighlight(null);
+                return;
+            }
+            const matches = nodes.filter(n => n.id.toLowerCase().includes(val));
+            setHighlight(matches);
+        });
 
         if (isDebugMode) {
             document
